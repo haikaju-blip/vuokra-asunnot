@@ -9,13 +9,8 @@ interface FilterBarProps {
   onTabChange: (tab: "available" | "upcoming") => void
   availableCount: number
   upcomingCount: number
+  areas?: string[]
 }
-
-const areas = [
-  { id: "all", label: "Kaikki" },
-  { id: "area-a", label: "Alue A" },
-  { id: "area-b", label: "Alue B" },
-]
 
 export function FilterBar({
   selectedArea,
@@ -24,13 +19,19 @@ export function FilterBar({
   onTabChange,
   availableCount,
   upcomingCount,
+  areas = [],
 }: FilterBarProps) {
+  const areaOptions = [
+    { id: "all", label: "Kaikki" },
+    ...areas.map((area) => ({ id: area, label: area })),
+  ]
+
   return (
     <div className="bg-card rounded-[16px] border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)] p-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-          <div className="flex items-center gap-2" role="group" aria-label="Valitse alue">
-            {areas.map((area) => (
+          <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Valitse alue">
+            {areaOptions.map((area) => (
               <button
                 key={area.id}
                 onClick={() => onAreaChange(area.id)}

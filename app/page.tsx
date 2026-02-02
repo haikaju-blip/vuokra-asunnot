@@ -1,34 +1,55 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { FilterBar } from "@/components/filter-bar"
 import { PropertyGrid } from "@/components/property-grid"
-import { allProperties } from "@/lib/properties"
+import type { Property } from "@/lib/properties"
 
 const ITEMS_PER_PAGE = 4
 
 export default function PropertiesPage() {
+  const [properties, setProperties] = useState<Property[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedArea, setSelectedArea] = useState("all")
   const [selectedTab, setSelectedTab] = useState<"available" | "upcoming">("available")
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE)
 
+  useEffect(() => {
+    fetch("/api/properties")
+      .then((res) => res.json())
+      .then((data) => {
+        setProperties(data)
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error("Failed to load properties:", err)
+        setLoading(false)
+      })
+  }, [])
+
+  // Get unique areas from properties
+  const areas = useMemo(() => {
+    const uniqueAreas = [...new Set(properties.map((p) => p.area))]
+    return uniqueAreas.sort()
+  }, [properties])
+
   const filteredProperties = useMemo(() => {
-    return allProperties.filter((p) => {
-      const matchesArea = selectedArea === "all" || (selectedArea === "area-a" && p.area === "Alue A") || (selectedArea === "area-b" && p.area === "Alue B")
+    return properties.filter((p) => {
+      const matchesArea = selectedArea === "all" || p.area === selectedArea
       return matchesArea && p.status === selectedTab
     })
-  }, [selectedArea, selectedTab])
+  }, [properties, selectedArea, selectedTab])
 
   const counts = useMemo(() => {
-    const filtered = allProperties.filter((p) => {
-      const matchesArea = selectedArea === "all" || (selectedArea === "area-a" && p.area === "Alue A") || (selectedArea === "area-b" && p.area === "Alue B")
+    const filtered = properties.filter((p) => {
+      const matchesArea = selectedArea === "all" || p.area === selectedArea
       return matchesArea
     })
     return {
       available: filtered.filter((p) => p.status === "available").length,
       upcoming: filtered.filter((p) => p.status === "upcoming").length,
     }
-  }, [selectedArea])
+  }, [properties, selectedArea])
 
   const visibleProperties = filteredProperties.slice(0, visibleCount)
   const hasMore = visibleCount < filteredProperties.length
@@ -54,7 +75,7 @@ export default function PropertiesPage() {
                   <polyline points="9 22 9 12 15 12 15 22" />
                 </svg>
               </div>
-              <span className="text-lg font-semibold text-foreground">Kohteet</span>
+              <span className="text-lg font-semibold text-foreground">Vuokra-asunnot</span>
             </div>
           </div>
         </div>
@@ -70,26 +91,33 @@ export default function PropertiesPage() {
           </p>
         </div>
 
-        <FilterBar
-          selectedArea={selectedArea}
-          onAreaChange={handleAreaChange}
-          selectedTab={selectedTab}
-          onTabChange={handleTabChange}
-          availableCount={counts.available}
-          upcomingCount={counts.upcoming}
-        />
+        {loading ? (
+          <div className="text-muted-foreground">Ladataan kohteita...</div>
+        ) : (
+          <>
+            <FilterBar
+              selectedArea={selectedArea}
+              onAreaChange={handleAreaChange}
+              selectedTab={selectedTab}
+              onTabChange={handleTabChange}
+              availableCount={counts.available}
+              upcomingCount={counts.upcoming}
+              areas={areas}
+            />
 
-        <PropertyGrid
-          properties={visibleProperties}
-          showLoadMore={hasMore}
-          onLoadMore={() => setVisibleCount((prev) => prev + ITEMS_PER_PAGE)}
-        />
+            <PropertyGrid
+              properties={visibleProperties}
+              showLoadMore={hasMore}
+              onLoadMore={() => setVisibleCount((prev) => prev + ITEMS_PER_PAGE)}
+            />
+          </>
+        )}
       </main>
 
       <footer className="border-t border-border bg-card mt-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
           <p className="text-sm text-muted-foreground text-center">
-            © 2026 Kohteet. Kaikki oikeudet pidätetään.
+            © 2026 Vuokra-asunnot. Kaikki oikeudet pidätetään.
           </p>
         </div>
       </footer>

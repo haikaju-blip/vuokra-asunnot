@@ -1,20 +1,47 @@
 "use client"
 
-import { useParams, notFound } from "next/navigation"
+import { useParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { useState, useEffect } from "react"
-import { allProperties } from "@/lib/properties"
 import { cn } from "@/lib/utils"
+import type { Property } from "@/lib/properties"
 
 const ROTATE_INTERVAL_MS = 4000
 
 export default function PropertyPage() {
   const params = useParams()
   const id = params?.id as string
-  const property = allProperties.find((p) => p.id === id)
-  const images = property?.gallery?.length ? property.gallery : property ? [property.image] : []
+
+  const [property, setProperty] = useState<Property | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [notFound, setNotFound] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+
+  useEffect(() => {
+    if (!id) return
+    fetch(`/api/properties/${id}`)
+      .then((res) => {
+        if (res.status === 404) {
+          setNotFound(true)
+          setLoading(false)
+          return null
+        }
+        return res.json()
+      })
+      .then((data) => {
+        if (data) {
+          setProperty(data)
+        }
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error("Failed to load property:", err)
+        setLoading(false)
+      })
+  }, [id])
+
+  const images = property?.gallery?.length ? property.gallery : property ? [property.image] : []
 
   useEffect(() => {
     if (images.length <= 1) return
@@ -24,7 +51,24 @@ export default function PropertyPage() {
     return () => clearInterval(t)
   }, [images.length])
 
-  if (!property) notFound()
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground">Ladataan kohdetta...</div>
+      </div>
+    )
+  }
+
+  if (notFound || !property) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+        <h1 className="text-2xl font-semibold text-foreground">Kohdetta ei löytynyt</h1>
+        <Link href="/" className="text-primary hover:underline">
+          Takaisin kohteisiin
+        </Link>
+      </div>
+    )
+  }
 
   const matterportUrl = property.matterportUrl
 
@@ -40,7 +84,7 @@ export default function PropertyPage() {
                   <polyline points="9 22 9 12 15 12 15 22" />
                 </svg>
               </div>
-              <span className="text-lg font-semibold">Kohteet</span>
+              <span className="text-lg font-semibold">Vuokra-asunnot</span>
             </Link>
             <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
               ← Takaisin listaan
@@ -56,11 +100,10 @@ export default function PropertyPage() {
               {property.name}
             </h1>
             <p className="text-muted-foreground">
-              {property.location} · {property.area}
+              {property.location}
             </p>
 
-            {/* Pyörivä kuvagalleria */}
-            {images.length > 0 && (
+            {images.length > 0 && images[0] !== "/placeholder.svg" && (
               <div className="rounded-[16px] overflow-hidden border border-border/70 bg-muted aspect-video relative">
                 {images.map((src, i) => (
                   <Image
@@ -96,7 +139,6 @@ export default function PropertyPage() {
               </div>
             )}
 
-            {/* Matterport 3D-kierros embed */}
             {matterportUrl && (
               <section className="space-y-3">
                 <h2 className="text-xl font-semibold text-foreground">3D-virtuaalikierros (Matterport)</h2>
@@ -130,7 +172,7 @@ export default function PropertyPage() {
                     property.status === "available" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
                   )}
                 >
-                  {property.status === "available" ? "Vapaa" : `Vapautuu ${property.availableDate}`}
+                  {property.status === "available" ? "Vapaa" : `Vapautuu ${property.availableDate || "pian"}`}
                 </span>
                 {matterportUrl && (
                   <span className="inline-flex items-center px-3 py-1.5 rounded-[10px] text-sm font-medium bg-secondary text-foreground">
@@ -139,11 +181,11 @@ export default function PropertyPage() {
                 )}
               </div>
               <p className="text-2xl font-semibold text-foreground">
-                {property.price.toLocaleString("fi-FI")} €/kk
+                {property.price > 0 ? `${property.price.toLocaleString("fi-FI")} €/kk` : "Hinta sopimuksen mukaan"}
               </p>
               <ul className="mt-4 space-y-2 text-muted-foreground">
-                <li>{property.size} m²</li>
-                <li>{property.rooms} {property.rooms === 1 ? "huone" : "huonetta"}</li>
+                {property.size > 0 && <li>{property.size} m²</li>}
+                {property.rooms > 0 && <li>{property.rooms} {property.rooms === 1 ? "huone" : "huonetta"}</li>}
                 <li>{property.location}</li>
               </ul>
               <Link
