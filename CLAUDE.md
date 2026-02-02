@@ -194,6 +194,28 @@ systemctl status vuokra-esittely.service
 
 ---
 
+## Kohdesivu (`/kohde/[id]`)
+
+Uudistettu kohdesivu sisältää:
+- Key facts -palkki (m², huoneet, kerros, vuosi)
+- Kuvagalleria
+- Formatted description (markdown-tuki)
+- Highlights-pillerit
+- Kartta (Leaflet/OpenStreetMap)
+- Yhteydenotto-CTA
+- Mobiili-CTA (sticky footer)
+
+**Uudet komponentit:**
+- `contact-cta-card.tsx` - Yhteydenottolomake
+- `formatted-description.tsx` - Esittelytekstin muotoilu
+- `highlights-pills.tsx` - Ominaisuuspillerit
+- `key-facts-bar.tsx` - Perustiedot kompaktisti
+- `location-section.tsx` - Sijainti + kartta
+- `mobile-cta-bar.tsx` - Mobiili-footer
+- `property-map.tsx` - Leaflet-kartta
+
+---
+
 ## Tärkeät tiedostopolut
 
 ```
@@ -203,24 +225,33 @@ systemctl status vuokra-esittely.service
 │   │   ├── page.tsx              # Etusivu
 │   │   ├── layout.tsx            # Root layout
 │   │   ├── globals.css           # CSS-muuttujat
-│   │   ├── kohde/[id]/page.tsx   # Kohdesivu
+│   │   ├── kohde/[id]/page.tsx   # Kohdesivu (uudistettu)
+│   │   ├── meista/page.tsx       # Meistä-sivu
 │   │   ├── admin/
 │   │   │   ├── page.tsx          # Admin dashboard
 │   │   │   ├── layout.tsx        # Admin layout + sidebar
+│   │   │   ├── login/page.tsx    # Kirjautuminen
 │   │   │   ├── properties/[id]/  # Kohteen muokkaus
 │   │   │   └── images/[id]/      # Kuvien hallinta
 │   │   └── api/
 │   │       ├── properties/       # Julkinen API
 │   │       ├── admin/properties/ # Admin API (GET/PUT)
+│   │       ├── auth/             # NextAuth
 │   │       └── images/raw/       # Raakakuvat dropzonesta
 │   ├── components/
 │   │   ├── admin-sidebar.tsx     # Admin sivupalkki
 │   │   ├── filter-bar.tsx
 │   │   ├── property-card.tsx
-│   │   └── property-grid.tsx
-│   └── lib/
-│       ├── properties.ts         # Tyypit ja fetch-funktiot
-│       └── utils.ts              # cn() helper
+│   │   ├── property-grid.tsx
+│   │   ├── contact-cta-card.tsx  # Yhteydenotto
+│   │   ├── key-facts-bar.tsx     # Perustiedot
+│   │   ├── property-map.tsx      # Kartta
+│   │   └── ...                   # Muut kohdesivu-komponentit
+│   ├── lib/
+│   │   ├── properties.ts         # Tyypit ja fetch-funktiot
+│   │   ├── auth.ts               # NextAuth config
+│   │   └── utils.ts              # cn() helper
+│   └── middleware.ts             # Auth + Tailscale-tunnistus
 ├── data/
 │   ├── vuokra.db                 # SQLite tietokanta
 │   └── properties.json           # Kohteet JSON
