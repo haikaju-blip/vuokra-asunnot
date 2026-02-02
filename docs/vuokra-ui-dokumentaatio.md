@@ -225,18 +225,37 @@ Kohdesivun hero (LCP-optimoitu):
 - EI "0 m²"
 - EI "0 huonetta"
 
-**Metarivin muodostus:**
+**Metarivin muodostus (React-komponentissa):**
+
+HUOM: Älä käytä `parts.join(" · ")` React-solmuille - se tuottaa `[object Object]`.
+
 ```tsx
-const parts = []
-if (price > 0) parts.push(`${price} €/kk`)
-if (size > 0) parts.push(`${size} m²`)
-if (rooms > 0) parts.push(`${rooms} huonetta`)
+// Oikea tapa: reduce() React-solmuilla
+const parts: React.ReactNode[] = []
+if (price > 0) {
+  parts.push(
+    <span key="price" className="font-semibold text-foreground">
+      {price.toLocaleString("fi-FI")} €/kk
+    </span>
+  )
+}
+if (size > 0) {
+  parts.push(<span key="size">{size} m²</span>)
+}
+if (rooms > 0) {
+  parts.push(<span key="rooms">{rooms} huonetta</span>)
+}
 
-// Jos kaikki puuttuu:
-if (parts.length === 0) return "Tiedot tulossa"
+if (parts.length === 0) {
+  return <span>Tiedot tulossa</span>
+}
 
-// Muuten yhdistä:
-return parts.join(" · ")
+// Lisää erotin reduce():lla, EI join():lla
+return parts.reduce<React.ReactNode[]>((acc, part, i) => {
+  if (i > 0) acc.push(<span key={`sep-${i}`} className="mx-2 text-muted-foreground">·</span>)
+  acc.push(part)
+  return acc
+}, [])
 ```
 
 ---
@@ -378,15 +397,34 @@ export const metadata: Metadata = {
         </p>
       </div>
 
-      {/* Metarivi - EI NOLLIA */}
+      {/* Metarivi - EI NOLLIA, EI join() React-solmuille */}
       <p className="text-[13px] text-muted-foreground">
         {(() => {
-          const parts = []
-          if (price > 0) parts.push(<span className="font-semibold text-foreground">{price} €/kk</span>)
-          if (size > 0) parts.push(`${size} m²`)
-          if (rooms > 0) parts.push(`${rooms} huonetta`)
-          if (parts.length === 0) return "Tiedot tulossa"
-          return parts.join(" · ")
+          const parts: React.ReactNode[] = []
+          if (price > 0) {
+            parts.push(
+              <span key="price" className="font-semibold text-foreground">
+                {price.toLocaleString("fi-FI")} €/kk
+              </span>
+            )
+          }
+          if (size > 0) {
+            parts.push(<span key="size">{size} m²</span>)
+          }
+          if (rooms > 0) {
+            parts.push(
+              <span key="rooms">{rooms} {rooms === 1 ? "huone" : "huonetta"}</span>
+            )
+          }
+          if (parts.length === 0) {
+            return <span>Tiedot tulossa</span>
+          }
+          // Käytä reduce(), EI join() - join() rikkoo React-solmut
+          return parts.reduce<React.ReactNode[]>((acc, part, i) => {
+            if (i > 0) acc.push(<span key={`sep-${i}`} className="mx-2 text-muted-foreground">·</span>)
+            acc.push(part)
+            return acc
+          }, [])
         })()}
       </p>
 

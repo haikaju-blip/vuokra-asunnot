@@ -158,7 +158,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
                 return <span>Tiedot tulossa</span>
               }
               return parts.reduce<React.ReactNode[]>((acc, part, i) => {
-                if (i > 0) acc.push(<span key={`sep-${i}`} className="mx-2 text-border">·</span>)
+                if (i > 0) acc.push(<span key={`sep-${i}`} className="mx-2 text-muted-foreground">·</span>)
                 acc.push(part)
                 return acc
               }, [])
