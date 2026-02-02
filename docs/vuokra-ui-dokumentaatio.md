@@ -1,11 +1,31 @@
-# Vuokra-asunnot - Täydellinen UI/Brändi-dokumentaatio
+# ELEA asunnot - Täydellinen UI/Brändi-dokumentaatio
 
 ## Projektin yleiskuvaus
 
-Vuokra-asuntojen esittelyportaali suomalaisille vuokra-asunnoille.
+ELEA asuntojen esittelyportaali suomalaisille vuokra-asunnoille.
+- **Brändi:** ELEA asunnot (FI) / ELEA Homes (EN)
+- **Slogan:** "Selkeä tie kotiin."
 - **Tyyli:** Blueground/Airbnb-henkinen, rauhallinen ja laadukas
 - **Kohderyhmä:** Vuokra-asuntoa etsivät
 - **Kieli:** Suomi
+
+---
+
+## Brändi (LUKITTU)
+
+| Kieli | Kirjoitusasu |
+|-------|--------------|
+| Suomi | **ELEA asunnot** |
+| Englanti | **ELEA Homes** (Homes isolla H:lla) |
+
+**Pakolliset käyttöpaikat:**
+- Header: **ELEA asunnot**
+- Footer: `© {vuosi} ELEA asunnot. Kaikki oikeudet pidätetään.`
+- Meta title: "ELEA asunnot – ..."
+
+**Äänensävy:**
+- Lyhyt, selkeä, rauhallinen
+- Ei markkinahöttöä, ei huutomerkkejä
 
 ---
 
@@ -15,8 +35,8 @@ Vuokra-asuntojen esittelyportaali suomalaisille vuokra-asunnoille.
 - **Kieli:** TypeScript
 - **Tyylitys:** Tailwind CSS 4 + OKLCH-värit
 - **UI-kirjastot:** Ei ulkoisia (shadcn/ui-tyylinen tokenointi)
-- **Kuvat:** Next.js Image-komponentti
-- **3D-kierrokset:** Matterport iframe-upotus
+- **Kuvat:** Native `<img>` + srcSet + sizes (ei Next.js Image)
+- **3D-kierrokset:** Matterport iframe (lazy-load klikkauksesta)
 - **Data:** Runtime API `/api/properties` → `properties.json`
 
 ---
@@ -71,9 +91,9 @@ Vuokra-asuntojen esittelyportaali suomalaisille vuokra-asunnoille.
 - Neutraali vaalea tausta
 - Tumma teksti
 - **Yksi korostusväri** (primary sininen)
-- ❌ EI räikeitä värejä
-- ❌ EI liukuvärejä
-- ❌ EI gradientteja
+- Ei räikeitä värejä
+- Ei liukuvärejä
+- Ei gradientteja
 
 ### 2. Välistys (Spacing)
 - Asteikko: **8 / 12 / 16 / 24 / 32 px**
@@ -91,14 +111,14 @@ Vuokra-asuntojen esittelyportaali suomalaisille vuokra-asunnoille.
 | Logo | 8px | `rounded-[8px]` |
 | Välilehdet (sisä) | 8px | `rounded-[8px]` |
 
-❌ ÄLÄ vaihtele pyöristyksiä satunnaisesti
+ÄLÄ vaihtele pyöristyksiä satunnaisesti
 
 ### 4. Varjot
 - **Erittäin hienovaraiset**
 - Oletus: `shadow-[0_1px_2px_rgba(16,24,40,0.06)]`
 - Hover: `shadow-[0_8px_20px_rgba(16,24,40,0.10)]`
-- ❌ EI voimakkaita varjoja
-- ❌ EI "pomppaavia" hover-animaatioita
+- EI voimakkaita varjoja
+- EI "pomppaavia" hover-animaatioita
 
 ### 5. Typografia
 ```
@@ -143,7 +163,7 @@ Leipäteksti:
 └── ...
 ```
 
-**Käyttö komponenteissa (srcSet + sizes):**
+**Käyttö komponenteissa (srcSet + sizes + decoding):**
 
 PropertyCard käyttää native `<img>` + srcSet:
 ```html
@@ -153,10 +173,12 @@ PropertyCard käyttää native `<img>` + srcSet:
           /images/38/01-card.webp 1200w,
           /images/38/01-large.webp 1600w"
   sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+  loading="lazy"
+  decoding="async"
 />
 ```
 
-Kohdesivun hero:
+Kohdesivun hero (LCP-optimoitu):
 ```html
 <img
   src="/images/38/01-hero.webp"
@@ -164,6 +186,9 @@ Kohdesivun hero:
           /images/38/01-large.webp 1600w,
           /images/38/01-hero.webp 2400w"
   sizes="(min-width: 1024px) 800px, 100vw"
+  loading="eager"
+  decoding="async"
+  fetchPriority="high"
 />
 ```
 
@@ -183,15 +208,36 @@ Kohdesivun hero:
 - fit: 'cover' + position: 'center' - keskitetty rajaus
 
 **Pyörivä galleria:** 3-4 sekunnin välein
-**Hover-zoom:** ❌ EI käytössä
+**Hover-zoom:** EI käytössä
 
 ### 7. Interaktio ja saavutettavuus
 - Koko kortti on klikattava (Next.js Link wrapper)
 - Fokuskehys **aina näkyvä**: `focus-visible:ring-2 focus-visible:ring-ring`
-- ❌ EI sisäkkäisiä linkkejä
+- EI sisäkkäisiä linkkejä
 - `aria-label` linkeille: "Katso kohde: {nimi}"
 - `aria-pressed` toggle-napeille
 - `role="tablist"` välilehdille
+
+### 8. Puuttuvien tietojen käsittely (TÄRKEÄ)
+
+**Älä koskaan näytä nollia:**
+- EI "0 €/kk"
+- EI "0 m²"
+- EI "0 huonetta"
+
+**Metarivin muodostus:**
+```tsx
+const parts = []
+if (price > 0) parts.push(`${price} €/kk`)
+if (size > 0) parts.push(`${size} m²`)
+if (rooms > 0) parts.push(`${rooms} huonetta`)
+
+// Jos kaikki puuttuu:
+if (parts.length === 0) return "Tiedot tulossa"
+
+// Muuten yhdistä:
+return parts.join(" · ")
+```
 
 ---
 
@@ -206,6 +252,14 @@ Kohdesivun hero:
 </html>
 ```
 
+**Metadata:**
+```tsx
+export const metadata: Metadata = {
+  title: "ELEA asunnot – Löydä unelmiesi koti",
+  description: "Selaa vapaita ja pian vapautuvia ELEA-asuntoja. Selkeä tie kotiin.",
+}
+```
+
 ### Header
 ```tsx
 <header className="border-b border-border bg-card">
@@ -217,12 +271,23 @@ Kohdesivun hero:
           {/* Talo-ikoni */}
         </div>
         <span className="text-lg font-semibold text-foreground">
-          Vuokra-asunnot
+          ELEA asunnot
         </span>
       </div>
     </div>
   </div>
 </header>
+```
+
+### Footer
+```tsx
+<footer className="border-t border-border bg-card mt-16">
+  <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <p className="text-sm text-muted-foreground text-center">
+      © 2026 ELEA asunnot. Kaikki oikeudet pidätetään.
+    </p>
+  </div>
+</footer>
 ```
 
 ### FilterBar
@@ -258,7 +323,7 @@ Kohdesivun hero:
 </div>
 ```
 
-### PropertyCard
+### PropertyCard (puuttuvien tietojen käsittelyllä)
 ```tsx
 <Link href={`/kohde/${property.id}`}
   aria-label={`Katso kohde: ${property.name}`}
@@ -273,7 +338,14 @@ Kohdesivun hero:
 
     {/* Kuva */}
     <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-      <Image ... className="object-cover" />
+      <img
+        src={imageSrc}
+        srcSet={srcSet}
+        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+        loading="lazy"
+        decoding="async"
+        className="object-cover"
+      />
 
       {/* Badget */}
       <div className="absolute top-3 left-3 flex flex-wrap gap-2">
@@ -293,16 +365,6 @@ Kohdesivun hero:
           </span>
         )}
       </div>
-
-      {/* Gallerian pallot */}
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-        {images.map((_, i) => (
-          <span className={cn(
-            "w-1.5 h-1.5 rounded-full",
-            i === current ? "bg-primary-foreground" : "bg-white/60"
-          )} />
-        ))}
-      </div>
     </div>
 
     {/* Sisältö */}
@@ -316,14 +378,16 @@ Kohdesivun hero:
         </p>
       </div>
 
+      {/* Metarivi - EI NOLLIA */}
       <p className="text-[13px] text-muted-foreground">
-        <span className="font-semibold text-foreground">
-          {price} €/kk
-        </span>
-        <span className="mx-2 text-border">·</span>
-        {size} m²
-        <span className="mx-2 text-border">·</span>
-        {rooms} huonetta
+        {(() => {
+          const parts = []
+          if (price > 0) parts.push(<span className="font-semibold text-foreground">{price} €/kk</span>)
+          if (size > 0) parts.push(`${size} m²`)
+          if (rooms > 0) parts.push(`${rooms} huonetta`)
+          if (parts.length === 0) return "Tiedot tulossa"
+          return parts.join(" · ")
+        })()}
       </p>
 
       <div className="pt-1">
@@ -354,36 +418,51 @@ Kohdesivun hero:
 </button>
 ```
 
-### Kohdesivun (PropertyPage) rakenne
+### Kohdesivun Matterport (LAZY-LOAD)
+
+**Matterport-iframe ladataan vasta klikkauksesta:**
+
 ```tsx
-<div className="grid gap-8 lg:grid-cols-3">
-  {/* Vasen: 2/3 */}
-  <div className="lg:col-span-2 space-y-6">
-    <h1>{property.name}</h1>
+const [showMatterport, setShowMatterport] = useState(false)
 
-    {/* Pääkuva (video aspect ratio) */}
-    <div className="rounded-[16px] aspect-video">
-      <Image ... />
+{matterportUrl && (
+  <section className="space-y-3">
+    <h2 className="text-xl font-semibold text-foreground">3D-virtuaalikierros</h2>
+    <p className="text-sm text-muted-foreground">
+      Tutustu asuntoon 360°-kierroksella.
+    </p>
+    <div className="rounded-[16px] overflow-hidden border border-border/70 bg-muted aspect-video relative">
+      {showMatterport ? (
+        <iframe
+          title={`Matterport 3D-kierros: ${property.name}`}
+          src={`${matterportUrl}&play=1`}
+          allowFullScreen
+          allow="xr-spatial-tracking"
+          className="w-full h-full min-h-[400px]"
+        />
+      ) : (
+        <button
+          onClick={() => setShowMatterport(true)}
+          className="absolute inset-0 w-full h-full flex flex-col items-center justify-center gap-4
+            bg-secondary/50 hover:bg-secondary/70 transition-colors cursor-pointer"
+        >
+          <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center shadow-lg">
+            {/* 3D-ikoni */}
+          </div>
+          <span className="text-lg font-medium text-foreground">Avaa 3D-virtuaalikierros</span>
+          <span className="text-sm text-muted-foreground">Klikkaa ladataksesi interaktiivisen kierroksen</span>
+        </button>
+      )}
     </div>
-
-    {/* Matterport-upotus */}
-    {matterportUrl && (
-      <section>
-        <h2>3D-virtuaalikierros</h2>
-        <iframe src={matterportUrl} className="aspect-video" />
-      </section>
-    )}
-  </div>
-
-  {/* Oikea: 1/3 - Info-kortti */}
-  <div className="rounded-[16px] border border-border/70 bg-card p-6">
-    <span className="badge">Vapaa</span>
-    <p className="text-2xl font-semibold">{price} €/kk</p>
-    <ul>{/* size, rooms, location */}</ul>
-    <Link className="bg-primary">Takaisin kohteisiin</Link>
-  </div>
-</div>
+  </section>
+)}
 ```
+
+**Miksi lazy-load:**
+- Matterport-iframe on raskas (~2-5 MB)
+- Ei ladata turhaan jos käyttäjä ei tarvitse
+- Parempi suorituskyky ja LCP-aika
+- Käyttäjä päättää itse milloin lataa
 
 ---
 
@@ -392,7 +471,7 @@ Kohdesivun hero:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ HEADER                                                      │
-│ [Logo] Vuokra-asunnot                                       │
+│ [Logo] ELEA asunnot                                         │
 ├─────────────────────────────────────────────────────────────┤
 │ HERO                                                        │
 │ h1: "Löydä unelmiesi koti"                                  │
@@ -414,7 +493,7 @@ Kohdesivun hero:
 │                    [Näytä lisää]                            │
 ├─────────────────────────────────────────────────────────────┤
 │ FOOTER                                                      │
-│ © 2026 Vuokra-asunnot. Kaikki oikeudet pidätetään.          │
+│ © 2026 ELEA asunnot. Kaikki oikeudet pidätetään.            │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -433,9 +512,9 @@ interface Property {
   area: string            // Alue (filtteröinti): "Espoo", "Oulu"
   image: string           // Pääkuva
   gallery?: string[]      // Kuvagalleria
-  size: number            // Neliöt
-  rooms: number           // Huoneiden määrä
-  price: number           // Vuokra €/kk
+  size: number            // Neliöt (0 = puuttuu)
+  rooms: number           // Huoneiden määrä (0 = puuttuu)
+  price: number           // Vuokra €/kk (0 = puuttuu)
   status: "available" | "upcoming"
   availableDate?: string  // "1.3.2026"
   matterportUrl?: string  // 3D-kierroksen URL
@@ -469,26 +548,28 @@ Max-width: `max-w-7xl` (1280px)
 
 ## Kielletyt asiat
 
-- ❌ **Uudet värit** - käytä vain olemassa olevia tokeneita
-- ❌ **Räikeät varjot** - vain määritellyt hienovaraiset
-- ❌ **Liukuvärit/gradientit** - ei koskaan
-- ❌ **Vaihtelevat pyöristykset** - pidä kiinni määritellyistä
-- ❌ **Sisäkkäiset linkit** - kortti = yksi linkki
-- ❌ **Emojit** - ellei erikseen pyydetä
-- ❌ **Ulkoiset UI-kirjastot** - ei Material, Chakra, yms.
-- ❌ **Animaatiot** - ei "pomppivia" hover-efektejä
-- ❌ **Tumma teema** - ei toteutettu
+- **Uudet värit** - käytä vain olemassa olevia tokeneita
+- **Räikeät varjot** - vain määritellyt hienovaraiset
+- **Liukuvärit/gradientit** - ei koskaan
+- **Vaihtelevat pyöristykset** - pidä kiinni määritellyistä
+- **Sisäkkäiset linkit** - kortti = yksi linkki
+- **Emojit** - ellei erikseen pyydetä
+- **Ulkoiset UI-kirjastot** - ei Material, Chakra, yms.
+- **Animaatiot** - ei "pomppivia" hover-efektejä
+- **Tumma teema** - ei toteutettu
+- **Nolla-arvot** - ei näytetä (0 €/kk, 0 m², 0 huonetta)
+- **Matterport suora lataus** - aina lazy-load klikkauksesta
 
 ---
 
 ## Sallitut asiat
 
-- ✅ Olemassa olevien tokenien käyttö
-- ✅ Hienovaraiset hover-siirtymät (transition duration-300)
-- ✅ Backdrop-blur badgeissa (backdrop-blur-md)
-- ✅ Ring fokuskehyksenä
-- ✅ Pyörivä kuvagalleria
-- ✅ Matterport-iframe upotus
+- Olemassa olevien tokenien käyttö
+- Hienovaraiset hover-siirtymät (transition duration-300)
+- Backdrop-blur badgeissa (backdrop-blur-md)
+- Ring fokuskehyksenä
+- Pyörivä kuvagalleria
+- Matterport-iframe upotus (lazy-load)
 
 ---
 
@@ -561,6 +642,7 @@ Max-width: `max-w-7xl` (1280px)
 
 | Ominaisuus | Arvo |
 |------------|------|
+| Brändi | ELEA asunnot |
 | Primary väri | oklch(0.45 0.12 250) - sininen |
 | Tausta | oklch(0.985 0.002 90) - lämmin vaalea |
 | Pyöristys (kortit) | 16px |
@@ -572,9 +654,10 @@ Max-width: `max-w-7xl` (1280px)
 | Max-width | 1280px (max-w-7xl) |
 | Kuvasuhde | 4:3 (kaikki koot) |
 | Kuvaformaatti | WebP |
-| Korttikuva | 1600×1200 (large) |
-| Hero-kuva | 2400×1800 (hero) |
+| Korttikuva | srcSet: thumb/card/large |
+| Hero-kuva | srcSet: card/large/hero + fetchPriority="high" |
 | Kuvan laatu | 75-82% (koon mukaan) |
+| Matterport | Lazy-load klikkauksesta |
 
 ---
 
@@ -582,6 +665,7 @@ Max-width: `max-w-7xl` (1280px)
 
 | Päivä | Muutos |
 |-------|--------|
+| 2026-02-02 | ELEA-brändiohje yhteensopivuus (brändi, puuttuvat tiedot, Matterport lazy-load) |
 | 2026-02-02 | srcSet + sizes responsiivisille kuville |
 | 2026-02-02 | Responsiivinen kuvaoptimointi (4 kokoa, WebP) |
 | 2026-02-02 | Admin-käyttöliittymä kuvien valintaan |
