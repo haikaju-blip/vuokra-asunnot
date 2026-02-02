@@ -143,6 +143,39 @@ Data ladataan runtime API:sta, joten muutokset `properties.json`-tiedostoon näk
 
 ---
 
+## Admin-käyttöliittymä
+
+### Osoitteet (Tailscale-verkko)
+
+| Sivu | Osoite |
+|------|--------|
+| Etusivu | http://100.119.209.125:3000 |
+| Admin | http://100.119.209.125:3000/admin |
+| Kohteen muokkaus | http://100.119.209.125:3000/admin/properties/[id] |
+| Kuvien hallinta | http://100.119.209.125:3000/admin/images/[db_id] |
+
+### Admin API
+
+```
+GET  /api/admin/properties        # Kaikki kohteet (myös piilotetut)
+GET  /api/admin/properties/[id]   # Yksittäinen kohde
+PUT  /api/admin/properties/[id]   # Päivitä kohde
+```
+
+### Kohteen muokkaussivu
+
+Kaksipalstainen layout (60%/40%):
+
+**Vasen paneeli:** status, tiedot, highlights, esittelyteksti, muistiinpanot
+**Oikea paneeli:** kuvaesikatselu (dropzonesta), read-only tiedot, toiminnot
+
+**Pikanäppäimet:**
+- `⌘S` / `Ctrl+S` - Tallenna
+- `Alt+←` - Edellinen kohde
+- `Alt+→` - Seuraava kohde
+
+---
+
 ## Komennot
 
 ```bash
@@ -171,8 +204,17 @@ systemctl status vuokra-esittely.service
 │   │   ├── layout.tsx            # Root layout
 │   │   ├── globals.css           # CSS-muuttujat
 │   │   ├── kohde/[id]/page.tsx   # Kohdesivu
-│   │   └── api/properties/       # API-reitit
+│   │   ├── admin/
+│   │   │   ├── page.tsx          # Admin dashboard
+│   │   │   ├── layout.tsx        # Admin layout + sidebar
+│   │   │   ├── properties/[id]/  # Kohteen muokkaus
+│   │   │   └── images/[id]/      # Kuvien hallinta
+│   │   └── api/
+│   │       ├── properties/       # Julkinen API
+│   │       ├── admin/properties/ # Admin API (GET/PUT)
+│   │       └── images/raw/       # Raakakuvat dropzonesta
 │   ├── components/
+│   │   ├── admin-sidebar.tsx     # Admin sivupalkki
 │   │   ├── filter-bar.tsx
 │   │   ├── property-card.tsx
 │   │   └── property-grid.tsx
@@ -184,4 +226,6 @@ systemctl status vuokra-esittely.service
 │   └── properties.json           # Kohteet JSON
 └── scripts/
     └── export_properties.py      # DB → JSON export
+
+/srv/shared/DROPZONE/vuokra-images-raw/   # Raakakuvat (Z:\vuokra-images-raw)
 ```

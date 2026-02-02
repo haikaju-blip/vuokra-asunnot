@@ -1,8 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 
 interface RawProperty {
   db_id: number
@@ -28,16 +29,36 @@ interface RawProperty {
   available_date: string | null
 }
 
+interface AdminProperty {
+  id: string
+  db_id: number
+  address: string
+  city: string
+  status: string
+  public: boolean
+}
+
+function extractStreetAddress(fullAddress: string): string {
+  const parts = fullAddress.split(" ")
+  const filtered = parts.filter(p => !/^\d{5}$/.test(p) && !["Oulu", "Vantaa", "Helsinki", "Espoo", "Tampere", "Turku"].includes(p))
+  return filtered.join(" ")
+}
+
 export default function PropertyEditPage() {
   const params = useParams()
   const router = useRouter()
   const propertyId = params?.id as string
 
   const [property, setProperty] = useState<RawProperty | null>(null)
+  const [allProperties, setAllProperties] = useState<AdminProperty[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState("")
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle")
+  const [isDirty, setIsDirty] = useState(false)
   const [newHighlight, setNewHighlight] = useState("")
+  const [showHighlightInput, setShowHighlightInput] = useState(false)
+  const highlightInputRef = useRef<HTMLInputElement>(null)
+  const [rawImages, setRawImages] = useState<{ name: string; path: string }[]>([])
 
   // Form state
   const [status, setStatus] = useState("available")
@@ -53,13 +74,31 @@ export default function PropertyEditPage() {
   const [availableDate, setAvailableDate] = useState("")
   const [highlights, setHighlights] = useState<string[]>([])
   const [description, setDescription] = useState("")
+  const [notes, setNotes] = useState("")
 
+  // Original values for dirty check
+  const [originalValues, setOriginalValues] = useState<any>(null)
+
+  // Load all properties for navigation
+  useEffect(() => {
+    fetch("/api/admin/properties")
+      .then((res) => res.json())
+      .then((data: AdminProperty[]) => setAllProperties(data))
+      .catch(() => {})
+  }, [])
+
+  // Load property
   useEffect(() => {
     if (!propertyId) return
 
     fetch(`/api/admin/properties/${propertyId}`)
       .then((res) => res.json())
       .then((data: RawProperty) => {
+        // Load raw images from dropzone
+        fetch(`/api/images/raw/${data.db_id}`)
+          .then(res => res.json())
+          .then(imgData => setRawImages(imgData.images || []))
+          .catch(() => {})
         setProperty(data)
         setStatus(data.status || "available")
         setIsPublic(data.public || false)
@@ -74,14 +113,48 @@ export default function PropertyEditPage() {
         setAvailableDate(data.available_date || "")
         setHighlights(data.highlights || [])
         setDescription(data.description || "")
+        setNotes(data.notes || "")
+        setOriginalValues({
+          status: data.status || "available",
+          isPublic: data.public || false,
+          rent: data.rent || "",
+          areaM2: data.area_m2 || "",
+          rooms: data.rooms || "",
+          floor: data.floor || "",
+          totalFloors: data.total_floors || "",
+          yearBuilt: data.year_built || "",
+          balcony: data.balcony,
+          matterport: data.matterport || "",
+          availableDate: data.available_date || "",
+          highlights: data.highlights || [],
+          description: data.description || "",
+          notes: data.notes || ""
+        })
+        setIsDirty(false)
         setLoading(false)
       })
       .catch(() => setLoading(false))
   }, [propertyId])
 
-  const handleSave = async () => {
+  // Check if dirty
+  useEffect(() => {
+    if (!originalValues) return
+
+    const currentValues = {
+      status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt,
+      balcony, matterport, availableDate, highlights, description, notes
+    }
+
+    const dirty = JSON.stringify(currentValues) !== JSON.stringify(originalValues)
+    setIsDirty(dirty)
+  }, [status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, highlights, description, notes, originalValues])
+
+  // Save handler
+  const handleSave = useCallback(async () => {
+    if (!isDirty || saving) return
+
     setSaving(true)
-    setMessage("")
+    setSaveState("saving")
 
     const updates = {
       status,
@@ -96,7 +169,8 @@ export default function PropertyEditPage() {
       matterport: matterport || null,
       available_date: availableDate || null,
       highlights: highlights.length > 0 ? highlights : null,
-      description: description || null
+      description: description || null,
+      notes: notes || null
     }
 
     try {
@@ -107,22 +181,63 @@ export default function PropertyEditPage() {
       })
 
       if (res.ok) {
-        setMessage("Tallennettu!")
-        setTimeout(() => setMessage(""), 3000)
+        setSaveState("saved")
+        setOriginalValues({
+          status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt,
+          balcony, matterport, availableDate, highlights, description, notes
+        })
+        setIsDirty(false)
+        setTimeout(() => setSaveState("idle"), 2000)
       } else {
-        setMessage("Tallennus epäonnistui")
+        setSaveState("error")
+        setTimeout(() => setSaveState("idle"), 3000)
       }
     } catch {
-      setMessage("Tallennus epäonnistui")
+      setSaveState("error")
+      setTimeout(() => setSaveState("idle"), 3000)
     }
 
     setSaving(false)
-  }
+  }, [isDirty, saving, status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, highlights, description, notes, propertyId])
 
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd/Ctrl + S to save
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault()
+        handleSave()
+      }
+
+      // Alt + Arrow for navigation
+      if (e.altKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+        e.preventDefault()
+        const currentIndex = allProperties.findIndex(p => p.id === propertyId)
+        if (currentIndex === -1) return
+
+        const newIndex = e.key === "ArrowLeft"
+          ? (currentIndex - 1 + allProperties.length) % allProperties.length
+          : (currentIndex + 1) % allProperties.length
+
+        router.push(`/admin/properties/${allProperties[newIndex].id}`)
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [handleSave, allProperties, propertyId, router])
+
+  // Navigation helpers
+  const currentIndex = allProperties.findIndex(p => p.id === propertyId)
+  const prevProperty = currentIndex > 0 ? allProperties[currentIndex - 1] : allProperties[allProperties.length - 1]
+  const nextProperty = currentIndex < allProperties.length - 1 ? allProperties[currentIndex + 1] : allProperties[0]
+
+  // Highlight handlers
   const addHighlight = () => {
     if (newHighlight.trim()) {
       setHighlights([...highlights, newHighlight.trim()])
       setNewHighlight("")
+      setShowHighlightInput(false)
     }
   }
 
@@ -130,9 +245,15 @@ export default function PropertyEditPage() {
     setHighlights(highlights.filter((_, i) => i !== index))
   }
 
+  useEffect(() => {
+    if (showHighlightInput && highlightInputRef.current) {
+      highlightInputRef.current.focus()
+    }
+  }, [showHighlightInput])
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-8">
+      <div className="h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Ladataan...</p>
       </div>
     )
@@ -140,318 +261,449 @@ export default function PropertyEditPage() {
 
   if (!property) {
     return (
-      <div className="min-h-screen bg-background p-8">
+      <div className="h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Kohdetta ei löytynyt</p>
-        <Link href="/admin" className="text-primary hover:underline mt-4 inline-block">
-          Takaisin
-        </Link>
       </div>
     )
   }
 
+  const streetAddress = extractStreetAddress(property.address)
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div>
+    <div className="h-screen flex flex-col">
+      {/* Sticky Header */}
+      <header className="flex-shrink-0 border-b border-border bg-card px-4 py-3">
+        <div className="flex items-center justify-between">
+          {/* Left: Navigation + Title */}
+          <div className="flex items-center gap-3">
+            {/* Nav buttons */}
+            <div className="flex gap-1">
               <Link
-                href="/admin"
-                className="text-sm text-muted-foreground hover:text-foreground"
+                href={`/admin/properties/${prevProperty?.id}`}
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] border border-border hover:bg-secondary transition"
+                title={`Edellinen (Alt+←)`}
               >
-                ← Takaisin
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
               </Link>
-              <h1 className="text-xl font-semibold mt-1">{property.address}</h1>
-              <p className="text-sm text-muted-foreground">{property.city}</p>
-            </div>
-            <div className="flex items-center gap-4">
-              {message && (
-                <span
-                  className={`text-sm ${
-                    message === "Tallennettu!" ? "text-green-600" : "text-red-600"
-                  }`}
-                >
-                  {message}
-                </span>
-              )}
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="px-6 py-2 rounded-[12px] bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50 transition"
+              <Link
+                href={`/admin/properties/${nextProperty?.id}`}
+                className="w-8 h-8 flex items-center justify-center rounded-[8px] border border-border hover:bg-secondary transition"
+                title={`Seuraava (Alt+→)`}
               >
-                {saving ? "Tallennetaan..." : "Tallenna"}
-              </button>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </Link>
             </div>
+
+            {/* Title */}
+            <div>
+              <h1 className="text-base font-semibold">{streetAddress}</h1>
+              <p className="text-xs text-muted-foreground">{property.city}</p>
+            </div>
+          </div>
+
+          {/* Right: Save button */}
+          <div className="flex items-center gap-2">
+            {isDirty && (
+              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" title="Tallentamattomia muutoksia" />
+            )}
+            <button
+              onClick={handleSave}
+              disabled={!isDirty || saving}
+              className={`px-4 py-1.5 rounded-[8px] text-sm font-medium transition flex items-center gap-2 ${
+                saveState === "saved"
+                  ? "bg-green-100 text-green-700 border border-green-200"
+                  : saveState === "error"
+                    ? "bg-red-100 text-red-700 border border-red-200"
+                    : isDirty
+                      ? "bg-primary text-primary-foreground hover:opacity-90"
+                      : "bg-secondary text-muted-foreground border border-border"
+              }`}
+            >
+              {saveState === "saving" ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Tallentaa...
+                </>
+              ) : saveState === "saved" ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Tallennettu
+                </>
+              ) : saveState === "error" ? (
+                "Virhe!"
+              ) : (
+                <>
+                  <span className="text-xs opacity-70">⌘S</span>
+                  Tallenna
+                </>
+              )}
+            </button>
           </div>
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-8">
-          {/* Perustiedot */}
-          <section className="bg-card border border-border rounded-[16px] p-6">
-            <h2 className="font-semibold mb-4">Perustiedot</h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Status */}
+      {/* Main content - two columns */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col lg:flex-row h-full">
+          {/* Left Panel - 60% */}
+          <div className="flex-1 lg:w-3/5 p-4 lg:p-6 space-y-6 lg:border-r border-border overflow-y-auto">
+            {/* Status Row */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
-                <label className="block text-sm font-medium mb-2">Status</label>
+                <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Status</label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full px-4 py-3 rounded-[12px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 >
                   <option value="available">Vapaa</option>
                   <option value="rented">Vuokrattu</option>
-                  <option value="hidden">Piilotettu</option>
                 </select>
               </div>
 
-              {/* Julkinen */}
               <div>
-                <label className="block text-sm font-medium mb-2">Julkinen</label>
-                <label className="flex items-center gap-3 px-4 py-3 rounded-[12px] border border-border cursor-pointer hover:bg-secondary/30">
+                <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Julkinen</label>
+                <label className="flex items-center gap-2 px-2.5 py-1.5 rounded-[8px] border border-border cursor-pointer hover:bg-secondary/30 h-[34px]">
                   <input
                     type="checkbox"
                     checked={isPublic}
                     onChange={(e) => setIsPublic(e.target.checked)}
-                    className="w-5 h-5 rounded border-border"
+                    className="w-4 h-4 rounded accent-primary"
                   />
-                  <span className="text-sm">Näytä julkisella sivustolla</span>
+                  <span className="text-sm">{isPublic ? "Kyllä" : "Ei"}</span>
                 </label>
               </div>
 
-              {/* Vuokra */}
               <div>
-                <label className="block text-sm font-medium mb-2">Vuokra (€/kk)</label>
-                <input
-                  type="number"
-                  value={rent}
-                  onChange={(e) => setRent(e.target.value ? Number(e.target.value) : "")}
-                  className="w-full px-4 py-3 rounded-[12px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="0"
-                />
+                <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Vuokra</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={rent}
+                    onChange={(e) => setRent(e.target.value ? Number(e.target.value) : "")}
+                    className="w-full px-2.5 py-1.5 pr-12 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="0"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">€/kk</span>
+                </div>
               </div>
 
-              {/* Vapautumispäivä */}
               <div>
-                <label className="block text-sm font-medium mb-2">Vapautumispäivä</label>
+                <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Vapautuu</label>
                 <input
                   type="date"
                   value={availableDate}
                   onChange={(e) => setAvailableDate(e.target.value)}
-                  className="w-full px-4 py-3 rounded-[12px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                 />
-              </div>
-
-              {/* Neliöt */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Neliöt (m²)</label>
-                <input
-                  type="number"
-                  value={areaM2}
-                  onChange={(e) => setAreaM2(e.target.value ? Number(e.target.value) : "")}
-                  className="w-full px-4 py-3 rounded-[12px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="-"
-                />
-              </div>
-
-              {/* Huoneet */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Huoneet</label>
-                <input
-                  type="number"
-                  value={rooms}
-                  onChange={(e) => setRooms(e.target.value ? Number(e.target.value) : "")}
-                  className="w-full px-4 py-3 rounded-[12px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="-"
-                />
-              </div>
-
-              {/* Kerros */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Kerros</label>
-                <input
-                  type="number"
-                  value={floor}
-                  onChange={(e) => setFloor(e.target.value ? Number(e.target.value) : "")}
-                  className="w-full px-4 py-3 rounded-[12px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="-"
-                />
-              </div>
-
-              {/* Kerroksia yhteensä */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Kerroksia yhteensä</label>
-                <input
-                  type="number"
-                  value={totalFloors}
-                  onChange={(e) =>
-                    setTotalFloors(e.target.value ? Number(e.target.value) : "")
-                  }
-                  className="w-full px-4 py-3 rounded-[12px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="-"
-                />
-              </div>
-
-              {/* Rakennusvuosi */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Rakennusvuosi</label>
-                <input
-                  type="number"
-                  value={yearBuilt}
-                  onChange={(e) =>
-                    setYearBuilt(e.target.value ? Number(e.target.value) : "")
-                  }
-                  className="w-full px-4 py-3 rounded-[12px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="-"
-                />
-              </div>
-
-              {/* Parveke */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Parveke</label>
-                <select
-                  value={balcony === null ? "" : balcony ? "yes" : "no"}
-                  onChange={(e) => {
-                    if (e.target.value === "") setBalcony(null)
-                    else setBalcony(e.target.value === "yes")
-                  }}
-                  className="w-full px-4 py-3 rounded-[12px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value="">Ei tiedossa</option>
-                  <option value="yes">Kyllä</option>
-                  <option value="no">Ei</option>
-                </select>
               </div>
             </div>
-          </section>
 
-          {/* 3D-kierros */}
-          <section className="bg-card border border-border rounded-[16px] p-6">
-            <h2 className="font-semibold mb-4">3D-kierros (Matterport)</h2>
-
+            {/* Details Grid */}
             <div>
-              <label className="block text-sm font-medium mb-2">Matterport ID</label>
-              <input
-                type="text"
-                value={matterport}
-                onChange={(e) => setMatterport(e.target.value)}
-                className="w-full px-4 py-3 rounded-[12px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Esim. SxQL3iGyoDo"
-              />
-              {matterport && (
-                <a
-                  href={`https://my.matterport.com/show/?m=${matterport}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-primary hover:underline mt-2 inline-block"
-                >
-                  Avaa 3D-kierros →
-                </a>
-              )}
-            </div>
-          </section>
+              <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Tiedot</h2>
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                <div>
+                  <label className="block text-[11px] text-muted-foreground mb-1">m²</label>
+                  <input
+                    type="number"
+                    value={areaM2}
+                    onChange={(e) => setAreaM2(e.target.value ? Number(e.target.value) : "")}
+                    className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="-"
+                  />
+                </div>
 
-          {/* Highlights */}
-          <section className="bg-card border border-border rounded-[16px] p-6">
-            <h2 className="font-semibold mb-4">Highlights / Pillerit</h2>
+                <div>
+                  <label className="block text-[11px] text-muted-foreground mb-1">Huoneet</label>
+                  <input
+                    type="number"
+                    value={rooms}
+                    onChange={(e) => setRooms(e.target.value ? Number(e.target.value) : "")}
+                    className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="-"
+                  />
+                </div>
 
-            <div className="flex flex-wrap gap-2 mb-4">
-              {highlights.map((h, i) => (
-                <span
-                  key={i}
-                  className="inline-flex items-center gap-2 px-3 py-1 rounded-[8px] bg-secondary text-sm"
-                >
-                  {h}
-                  <button
-                    onClick={() => removeHighlight(i)}
-                    className="text-muted-foreground hover:text-foreground"
-                    aria-label={`Poista ${h}`}
+                <div>
+                  <label className="block text-[11px] text-muted-foreground mb-1">Kerros</label>
+                  <div className="flex gap-1 items-center">
+                    <input
+                      type="number"
+                      value={floor}
+                      onChange={(e) => setFloor(e.target.value ? Number(e.target.value) : "")}
+                      className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                      placeholder="-"
+                    />
+                    <span className="text-muted-foreground text-sm">/</span>
+                    <input
+                      type="number"
+                      value={totalFloors}
+                      onChange={(e) => setTotalFloors(e.target.value ? Number(e.target.value) : "")}
+                      className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                      placeholder="-"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-muted-foreground mb-1">Rak.vuosi</label>
+                  <input
+                    type="number"
+                    value={yearBuilt}
+                    onChange={(e) => setYearBuilt(e.target.value ? Number(e.target.value) : "")}
+                    className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="-"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-muted-foreground mb-1">Parveke</label>
+                  <select
+                    value={balcony === null ? "" : balcony ? "yes" : "no"}
+                    onChange={(e) => {
+                      if (e.target.value === "") setBalcony(null)
+                      else setBalcony(e.target.value === "yes")
+                    }}
+                    className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    ×
+                    <option value="">-</option>
+                    <option value="yes">Kyllä</option>
+                    <option value="no">Ei</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] text-muted-foreground mb-1">Matterport</label>
+                  <input
+                    type="text"
+                    value={matterport}
+                    onChange={(e) => setMatterport(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                    placeholder="ID"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Highlights */}
+            <div>
+              <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Highlights</h2>
+              <div className="flex flex-wrap gap-1.5">
+                {highlights.map((h, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] bg-secondary text-sm group"
+                  >
+                    {h}
+                    <button
+                      onClick={() => removeHighlight(i)}
+                      className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+                {showHighlightInput ? (
+                  <input
+                    ref={highlightInputRef}
+                    type="text"
+                    value={newHighlight}
+                    onChange={(e) => setNewHighlight(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault()
+                        addHighlight()
+                      }
+                      if (e.key === "Escape") {
+                        setShowHighlightInput(false)
+                        setNewHighlight("")
+                      }
+                    }}
+                    onBlur={() => {
+                      if (newHighlight.trim()) {
+                        addHighlight()
+                      } else {
+                        setShowHighlightInput(false)
+                      }
+                    }}
+                    className="px-2 py-0.5 text-sm rounded-[6px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring w-32"
+                    placeholder="Lisää..."
+                  />
+                ) : (
+                  <button
+                    onClick={() => setShowHighlightInput(true)}
+                    className="px-2 py-0.5 rounded-[6px] border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition"
+                  >
+                    + Lisää
                   </button>
-                </span>
-              ))}
-              {highlights.length === 0 && (
-                <p className="text-sm text-muted-foreground">Ei vielä highlighteja</p>
-              )}
+                )}
+              </div>
             </div>
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newHighlight}
-                onChange={(e) => setNewHighlight(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault()
-                    addHighlight()
-                  }
-                }}
-                className="flex-1 px-4 py-3 rounded-[12px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                placeholder="Lisää uusi highlight..."
+            {/* Description */}
+            <div>
+              <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Esittelyteksti</h2>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={5}
+                className="w-full px-2.5 py-2 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-y min-h-[100px]"
+                placeholder="Kirjoita kohteen esittelyteksti..."
               />
-              <button
-                onClick={addHighlight}
-                disabled={!newHighlight.trim()}
-                className="px-4 py-3 rounded-[12px] border border-border hover:bg-secondary disabled:opacity-50 transition"
-              >
-                Lisää
-              </button>
             </div>
-          </section>
 
-          {/* Esittelyteksti */}
-          <section className="bg-card border border-border rounded-[16px] p-6">
-            <h2 className="font-semibold mb-4">Esittelyteksti</h2>
+            {/* Notes (internal) */}
+            <div>
+              <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Muistiinpanot <span className="font-normal">(sisäinen)</span></h2>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                className="w-full px-2.5 py-2 text-sm rounded-[8px] border border-border bg-muted/30 focus:outline-none focus:ring-2 focus:ring-ring resize-y text-muted-foreground"
+                placeholder="Sisäiset muistiinpanot..."
+              />
+            </div>
+          </div>
 
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={12}
-              className="w-full px-4 py-3 rounded-[12px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring resize-y"
-              placeholder="Kirjoita kohteen esittelyteksti..."
-            />
-            <p className="text-xs text-muted-foreground mt-2">
-              Rivinvaihdot säilyvät. Ei markdown-muotoilua.
-            </p>
-          </section>
-
-          {/* Linkit */}
-          <section className="bg-card border border-border rounded-[16px] p-6">
-            <h2 className="font-semibold mb-4">Linkit</h2>
-
-            <div className="flex flex-wrap gap-4">
+          {/* Right Panel - 40% */}
+          <div className="lg:w-2/5 p-4 lg:p-6 space-y-6 bg-muted/20 overflow-y-auto">
+            {/* Image Gallery - from dropzone */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">Kuvat</h2>
+                <span className="text-xs text-muted-foreground">{rawImages.length} kpl</span>
+              </div>
+              {rawImages.length > 0 ? (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {rawImages.slice(0, 7).map((img, i) => (
+                    <div key={i} className="aspect-square rounded-[6px] overflow-hidden bg-muted relative">
+                      <Image
+                        src={img.path}
+                        alt={`Kuva ${i + 1}`}
+                        fill
+                        className="object-cover"
+                        sizes="80px"
+                        unoptimized
+                      />
+                    </div>
+                  ))}
+                  {rawImages.length > 7 && (
+                    <Link
+                      href={`/admin/images/${property.db_id}`}
+                      className="aspect-square rounded-[6px] bg-secondary flex items-center justify-center text-sm text-muted-foreground hover:bg-secondary/80 transition"
+                    >
+                      +{rawImages.length - 7}
+                    </Link>
+                  )}
+                  {rawImages.length <= 7 && (
+                    <Link
+                      href={`/admin/images/${property.db_id}`}
+                      className="aspect-square rounded-[6px] border border-dashed border-border flex items-center justify-center text-muted-foreground hover:border-foreground hover:text-foreground transition"
+                    >
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </Link>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  href={`/admin/images/${property.db_id}`}
+                  className="block p-4 rounded-[8px] border border-dashed border-border text-center text-sm text-muted-foreground hover:border-foreground hover:text-foreground transition"
+                >
+                  Ei kuvia — klikkaa lisätäksesi
+                </Link>
+              )}
               <Link
                 href={`/admin/images/${property.db_id}`}
-                className="px-4 py-2 rounded-[12px] border border-border hover:bg-secondary transition"
+                className="block mt-2 text-xs text-primary hover:underline"
               >
-                Hallinnoi kuvia →
-              </Link>
-              <Link
-                href={`/kohde/${property.id}`}
-                target="_blank"
-                className="px-4 py-2 rounded-[12px] border border-border hover:bg-secondary transition"
-              >
-                Katso julkinen sivu →
+                Hallitse kuvia →
               </Link>
             </div>
-          </section>
 
-          {/* Tallenna (bottom) */}
-          <div className="flex justify-end">
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-8 py-3 rounded-[12px] bg-primary text-primary-foreground font-medium hover:opacity-90 disabled:opacity-50 transition"
-            >
-              {saving ? "Tallennetaan..." : "Tallenna muutokset"}
-            </button>
+            {/* Read-only info */}
+            <div className="border-t border-border pt-4">
+              <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-3">Tiedot</h2>
+              <dl className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Vuokranantaja</dt>
+                  <dd className="font-medium">{property.landlord}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">Sopimus</dt>
+                  <dd className={`font-medium ${property.contract_status === "signed" ? "text-green-600" : ""}`}>
+                    {property.contract_status === "signed" ? "Voimassa" : property.contract_status === "draft" ? "Luonnos" : property.contract_status}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-muted-foreground">ID</dt>
+                  <dd className="font-mono text-xs">#{property.db_id}</dd>
+                </div>
+              </dl>
+            </div>
+
+            {/* Quick actions */}
+            <div className="border-t border-border pt-4">
+              <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-3">Toiminnot</h2>
+              <div className="space-y-2">
+                <Link
+                  href={`/kohde/${property.id}`}
+                  target="_blank"
+                  className="flex items-center justify-between px-3 py-2 rounded-[8px] border border-border hover:bg-secondary transition text-sm"
+                >
+                  <span>Julkinen sivu</span>
+                  <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </Link>
+                {property.matterport && (
+                  <a
+                    href={`https://my.matterport.com/show/?m=${property.matterport}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between px-3 py-2 rounded-[8px] border border-border hover:bg-secondary transition text-sm"
+                  >
+                    <span>Avaa 3D-kierros</span>
+                    <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Keyboard shortcuts help */}
+            <div className="border-t border-border pt-4">
+              <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Pikanäppäimet</h2>
+              <div className="text-xs text-muted-foreground space-y-1">
+                <div className="flex items-center gap-2">
+                  <kbd className="px-1.5 py-0.5 rounded bg-secondary border border-border font-mono">⌘S</kbd>
+                  <span>Tallenna</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <kbd className="px-1.5 py-0.5 rounded bg-secondary border border-border font-mono">Alt+←</kbd>
+                  <span>Edellinen kohde</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <kbd className="px-1.5 py-0.5 rounded bg-secondary border border-border font-mono">Alt+→</kbd>
+                  <span>Seuraava kohde</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }
