@@ -75,7 +75,7 @@ export default function PropertiesPage() {
                   <polyline points="9 22 9 12 15 12 15 22" />
                 </svg>
               </div>
-              <span className="text-lg font-semibold text-foreground">Vuokra-asunnot</span>
+              <span className="text-lg font-semibold text-foreground">ELEA asunnot</span>
             </div>
           </div>
         </div>
@@ -117,7 +117,7 @@ export default function PropertiesPage() {
       <footer className="border-t border-border bg-card mt-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
           <p className="text-sm text-muted-foreground text-center">
-            © 2026 Vuokra-asunnot. Kaikki oikeudet pidätetään.
+            © 2026 ELEA asunnot. Kaikki oikeudet pidätetään.
           </p>
         </div>
       </footer>

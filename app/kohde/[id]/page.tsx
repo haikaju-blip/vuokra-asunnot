@@ -37,6 +37,7 @@ export default function PropertyPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [showMatterport, setShowMatterport] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -111,7 +112,7 @@ export default function PropertyPage() {
                   <polyline points="9 22 9 12 15 12 15 22" />
                 </svg>
               </div>
-              <span className="text-lg font-semibold">Vuokra-asunnot</span>
+              <span className="text-lg font-semibold">ELEA asunnot</span>
             </Link>
             <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
               ← Takaisin listaan
@@ -145,6 +146,8 @@ export default function PropertyPage() {
                         i === currentImageIndex ? "opacity-100" : "opacity-0"
                       )}
                       loading={i === 0 ? "eager" : "lazy"}
+                      decoding="async"
+                      {...(i === 0 ? { fetchPriority: "high" } : {})}
                     />
                   ) : (
                     <Image
@@ -182,18 +185,36 @@ export default function PropertyPage() {
 
             {matterportUrl && (
               <section className="space-y-3">
-                <h2 className="text-xl font-semibold text-foreground">3D-virtuaalikierros (Matterport)</h2>
+                <h2 className="text-xl font-semibold text-foreground">3D-virtuaalikierros</h2>
                 <p className="text-sm text-muted-foreground">
                   Tutustu asuntoon 360°-kierroksella. Voit liikkua tilassa ja tarkastella joka kulmaa.
                 </p>
-                <div className="rounded-[16px] overflow-hidden border border-border/70 bg-muted aspect-video min-h-[400px]">
-                  <iframe
-                    title={`Matterport 3D-kierros: ${property.name}`}
-                    src={`${matterportUrl}&play=1`}
-                    allowFullScreen
-                    allow="xr-spatial-tracking"
-                    className="w-full h-full min-h-[400px]"
-                  />
+                <div className="rounded-[16px] overflow-hidden border border-border/70 bg-muted aspect-video min-h-[400px] relative">
+                  {showMatterport ? (
+                    <iframe
+                      title={`Matterport 3D-kierros: ${property.name}`}
+                      src={`${matterportUrl}&play=1`}
+                      allowFullScreen
+                      allow="xr-spatial-tracking"
+                      className="w-full h-full min-h-[400px]"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowMatterport(true)}
+                      className="absolute inset-0 w-full h-full flex flex-col items-center justify-center gap-4 bg-secondary/50 hover:bg-secondary/70 transition-colors cursor-pointer"
+                      aria-label="Avaa 3D-virtuaalikierros"
+                    >
+                      <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary-foreground">
+                          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                          <circle cx="12" cy="12" r="4" />
+                        </svg>
+                      </div>
+                      <span className="text-lg font-medium text-foreground">Avaa 3D-virtuaalikierros</span>
+                      <span className="text-sm text-muted-foreground">Klikkaa ladataksesi interaktiivisen kierroksen</span>
+                    </button>
+                  )}
                 </div>
                 <p className="text-xs text-muted-foreground">
                   <a href={matterportUrl} target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">

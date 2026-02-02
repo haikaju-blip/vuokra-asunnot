@@ -66,7 +66,7 @@ OLET PROJEKTIN UI-TOTEUTTAJA. Tavoite: erittäin tyylikäs, rauhallinen "Bluegro
 
 ```
 ┌─────────────────────────────────────────────────┐
-│ Header: Logo + "Vuokra-asunnot"                 │
+│ Header: Logo + "ELEA asunnot"                 │
 ├─────────────────────────────────────────────────┤
 │ Otsikko: "Löydä unelmiesi koti"                 │
 │ Ingressi: "Valitse alue ja katso..."            │

@@ -78,6 +78,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
                   i === currentIndex ? "opacity-100 z-0" : "opacity-0 z-0"
                 )}
                 loading={i === 0 ? "eager" : "lazy"}
+                decoding="async"
               />
             ) : (
               // Fallback to Next/Image for non-processed images
@@ -134,13 +135,34 @@ export function PropertyCard({ property }: PropertyCardProps) {
             </p>
           </div>
           <p className="text-[13px] text-muted-foreground">
-            <span className="font-semibold text-foreground">
-              {property.price.toLocaleString("fi-FI")} €/kk
-            </span>
-            <span className="mx-2 text-border">·</span>
-            {property.size} m²
-            <span className="mx-2 text-border">·</span>
-            {property.rooms} {property.rooms === 1 ? "huone" : "huonetta"}
+            {(() => {
+              const parts: React.ReactNode[] = []
+              if (property.price > 0) {
+                parts.push(
+                  <span key="price" className="font-semibold text-foreground">
+                    {property.price.toLocaleString("fi-FI")} €/kk
+                  </span>
+                )
+              }
+              if (property.size > 0) {
+                parts.push(<span key="size">{property.size} m²</span>)
+              }
+              if (property.rooms > 0) {
+                parts.push(
+                  <span key="rooms">
+                    {property.rooms} {property.rooms === 1 ? "huone" : "huonetta"}
+                  </span>
+                )
+              }
+              if (parts.length === 0) {
+                return <span>Tiedot tulossa</span>
+              }
+              return parts.reduce<React.ReactNode[]>((acc, part, i) => {
+                if (i > 0) acc.push(<span key={`sep-${i}`} className="mx-2 text-border">·</span>)
+                acc.push(part)
+                return acc
+              }, [])
+            })()}
           </p>
           <div className="pt-1">
             <span className="inline-flex items-center justify-center rounded-[12px] px-4 py-2 text-[13px] font-medium border border-border/80 bg-card hover:bg-secondary transition">
