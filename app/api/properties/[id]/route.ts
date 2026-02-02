@@ -35,6 +35,13 @@ function transformProperty(raw: RawProperty): Property {
     matterportUrl,
     gallery: gallery.length ? gallery : undefined,
     public: raw.public,
+    // Kohdesivun lisäkentät
+    floor: raw.floor ?? undefined,
+    totalFloors: raw.total_floors ?? undefined,
+    balcony: raw.balcony ?? undefined,
+    yearBuilt: raw.year_built ?? undefined,
+    highlights: raw.highlights ?? undefined,
+    description: raw.description ?? undefined,
   }
 }
 

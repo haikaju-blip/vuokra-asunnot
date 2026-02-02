@@ -15,6 +15,13 @@ export interface Property {
   matterportUrl?: string
   gallery?: string[]
   public?: boolean
+  // Kohdesivun lisäkentät
+  floor?: number
+  totalFloors?: number
+  balcony?: boolean
+  yearBuilt?: number
+  highlights?: string[]
+  description?: string
 }
 
 /** Raw property from JSON database */
@@ -26,6 +33,7 @@ export interface RawProperty {
   area_m2: number | null
   rooms: number | null
   floor: number | null
+  total_floors?: number | null
   balcony: boolean | null
   rent: number
   landlord: string
@@ -35,6 +43,9 @@ export interface RawProperty {
   images: string[]
   public: boolean
   notes: string | null
+  year_built?: number | null
+  highlights?: string[] | null
+  description?: string | null
 }
 
 export const MATTERPORT_BASE = "https://my.matterport.com/show"
