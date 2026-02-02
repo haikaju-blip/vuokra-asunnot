@@ -13,22 +13,38 @@ interface PropertyCardProps {
 const ROTATE_INTERVAL_MS = 3000
 
 // Convert base path to sized image path
-// /images/38/01 -> /images/38/01-large.webp
 function getImageSrc(basePath: string, size: "thumb" | "card" | "large" | "hero" = "large"): string {
   if (basePath.includes(".") || basePath === "/placeholder.svg") {
-    return basePath // Already has extension or is placeholder
+    return basePath
   }
   return `${basePath}-${size}.webp`
+}
+
+// Build srcSet for responsive loading
+function buildSrcSet(basePath: string): string | undefined {
+  if (basePath.includes(".") || basePath === "/placeholder.svg") {
+    return undefined
+  }
+  return [
+    `${basePath}-thumb.webp 800w`,
+    `${basePath}-card.webp 1200w`,
+    `${basePath}-large.webp 1600w`,
+  ].join(", ")
 }
 
 export function PropertyCard({ property }: PropertyCardProps) {
   const isAvailable = property.status === "available"
   const href = `/kohde/${property.id}`
-  // Gallery contains base paths, we add size suffix
+  // Gallery contains base paths
   const baseImages = property.gallery?.length ? property.gallery : []
+  const hasProcessedImages = baseImages.length > 0 && !baseImages[0].includes(".")
   const images = baseImages.length
-    ? baseImages.map(base => getImageSrc(base, "large"))
-    : [property.image || "/placeholder.svg"]
+    ? baseImages.map(base => ({
+        src: getImageSrc(base, "large"),
+        srcSet: buildSrcSet(base),
+        base
+      }))
+    : [{ src: property.image || "/placeholder.svg", srcSet: undefined, base: "" }]
   const [currentIndex, setCurrentIndex] = useState(0)
   const hasRotation = images.length > 1
 
@@ -48,18 +64,35 @@ export function PropertyCard({ property }: PropertyCardProps) {
     >
       <article className="group bg-card rounded-[16px] overflow-hidden border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)] transition duration-300 hover:shadow-[0_8px_20px_rgba(16,24,40,0.10)]">
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          {images.map((src, i) => (
-            <Image
-              key={src}
-              src={src}
-              alt={`${property.name} ${i + 1}/${images.length}`}
-              fill
-              className={cn(
-                "object-cover transition-opacity duration-500",
-                i === currentIndex ? "opacity-100 z-0" : "opacity-0 z-0"
-              )}
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-            />
+          {images.map((img, i) => (
+            img.srcSet ? (
+              // Use native img with srcSet for pre-generated responsive images
+              <img
+                key={img.src}
+                src={img.src}
+                srcSet={img.srcSet}
+                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                alt={`${property.name} ${i + 1}/${images.length}`}
+                className={cn(
+                  "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
+                  i === currentIndex ? "opacity-100 z-0" : "opacity-0 z-0"
+                )}
+                loading={i === 0 ? "eager" : "lazy"}
+              />
+            ) : (
+              // Fallback to Next/Image for non-processed images
+              <Image
+                key={img.src}
+                src={img.src}
+                alt={`${property.name} ${i + 1}/${images.length}`}
+                fill
+                className={cn(
+                  "object-cover transition-opacity duration-500",
+                  i === currentIndex ? "opacity-100 z-0" : "opacity-0 z-0"
+                )}
+                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+              />
+            )
           ))}
           <div className="absolute top-3 left-3 flex flex-wrap gap-2">
             <span

@@ -17,6 +17,18 @@ function getImageSrc(basePath: string, size: "thumb" | "card" | "large" | "hero"
   return `${basePath}-${size}.webp`
 }
 
+// Build srcSet for hero images (large + hero for different screens)
+function buildHeroSrcSet(basePath: string): string | undefined {
+  if (basePath.includes(".") || basePath === "/placeholder.svg") {
+    return undefined
+  }
+  return [
+    `${basePath}-card.webp 1200w`,
+    `${basePath}-large.webp 1600w`,
+    `${basePath}-hero.webp 2400w`,
+  ].join(", ")
+}
+
 export default function PropertyPage() {
   const params = useParams()
   const id = params?.id as string
@@ -52,8 +64,11 @@ export default function PropertyPage() {
   // Use hero-sized images for property detail page
   const baseImages = property?.gallery?.length ? property.gallery : []
   const images = baseImages.length
-    ? baseImages.map(base => getImageSrc(base, "hero"))
-    : property?.image ? [property.image] : []
+    ? baseImages.map(base => ({
+        src: getImageSrc(base, "hero"),
+        srcSet: buildHeroSrcSet(base)
+      }))
+    : property?.image ? [{ src: property.image, srcSet: undefined }] : []
 
   useEffect(() => {
     if (images.length <= 1) return
@@ -115,21 +130,36 @@ export default function PropertyPage() {
               {property.location}
             </p>
 
-            {images.length > 0 && images[0] !== "/placeholder.svg" && (
+            {images.length > 0 && images[0].src !== "/placeholder.svg" && (
               <div className="rounded-[16px] overflow-hidden border border-border/70 bg-muted aspect-video relative">
-                {images.map((src, i) => (
-                  <Image
-                    key={src}
-                    src={src}
-                    alt={`${property.name} ${i + 1}/${images.length}`}
-                    fill
-                    className={cn(
-                      "object-cover transition-opacity duration-500",
-                      i === currentImageIndex ? "opacity-100" : "opacity-0"
-                    )}
-                    sizes="(max-width: 1024px) 100vw, 66vw"
-                    priority
-                  />
+                {images.map((img, i) => (
+                  img.srcSet ? (
+                    <img
+                      key={img.src}
+                      src={img.src}
+                      srcSet={img.srcSet}
+                      sizes="(min-width: 1024px) 800px, 100vw"
+                      alt={`${property.name} ${i + 1}/${images.length}`}
+                      className={cn(
+                        "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
+                        i === currentImageIndex ? "opacity-100" : "opacity-0"
+                      )}
+                      loading={i === 0 ? "eager" : "lazy"}
+                    />
+                  ) : (
+                    <Image
+                      key={img.src}
+                      src={img.src}
+                      alt={`${property.name} ${i + 1}/${images.length}`}
+                      fill
+                      className={cn(
+                        "object-cover transition-opacity duration-500",
+                        i === currentImageIndex ? "opacity-100" : "opacity-0"
+                      )}
+                      sizes="(min-width: 1024px) 800px, 100vw"
+                      priority={i === 0}
+                    />
+                  )
                 ))}
                 {images.length > 1 && (
                   <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 bg-black/40 rounded-full px-3 py-1.5">
