@@ -2,10 +2,15 @@
 
 import { useParams } from "next/navigation"
 import Link from "next/link"
-import Image from "next/image"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import type { Property } from "@/lib/properties"
+import { KeyFactsBar } from "@/components/key-facts-bar"
+import { HighlightsPills } from "@/components/highlights-pills"
+import { ContactCTACard } from "@/components/contact-cta-card"
+import { MobileCTABar } from "@/components/mobile-cta-bar"
+import { LocationSection } from "@/components/location-section"
+import { FormattedDescription } from "@/components/formatted-description"
 
 const ROTATE_INTERVAL_MS = 4000
 
@@ -17,7 +22,7 @@ function getImageSrc(basePath: string, size: "thumb" | "card" | "large" | "hero"
   return `${basePath}-${size}.webp`
 }
 
-// Build srcSet for hero images (large + hero for different screens)
+// Build srcSet for hero images
 function buildHeroSrcSet(basePath: string): string | undefined {
   if (basePath.includes(".") || basePath === "/placeholder.svg") {
     return undefined
@@ -101,7 +106,8 @@ export default function PropertyPage() {
   const matterportUrl = property.matterportUrl
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-24 lg:pb-0">
+      {/* Header */}
       <header className="border-b border-border bg-card">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
@@ -121,70 +127,96 @@ export default function PropertyPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        <div className="grid gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        {/* Hero Section */}
+        <div className="space-y-6 mb-8">
+          {/* Title & Location */}
+          <div className="space-y-2">
             <h1 className="text-2xl sm:text-3xl font-semibold text-foreground">
               {property.name}
             </h1>
-            <p className="text-muted-foreground">
-              {property.location}
-            </p>
+            <p className="text-muted-foreground">{property.location}</p>
+          </div>
 
-            {images.length > 0 && images[0].src !== "/placeholder.svg" && (
-              <div className="rounded-[16px] overflow-hidden border border-border/70 bg-muted aspect-video relative">
-                {images.map((img, i) => (
-                  img.srcSet ? (
-                    <img
-                      key={img.src}
-                      src={img.src}
-                      srcSet={img.srcSet}
-                      sizes="(min-width: 1024px) 800px, 100vw"
-                      alt={`${property.name} ${i + 1}/${images.length}`}
+          {/* Hero Image - 16:9 aspect ratio */}
+          {images.length > 0 && images[0].src !== "/placeholder.svg" && (
+            <div className="rounded-[16px] overflow-hidden border border-border/70 bg-muted aspect-video relative">
+              {images.map((img, i) => (
+                img.srcSet ? (
+                  <img
+                    key={img.src}
+                    src={img.src}
+                    srcSet={img.srcSet}
+                    sizes="(min-width: 1024px) 800px, 100vw"
+                    alt={`${property.name} ${i + 1}/${images.length}`}
+                    className={cn(
+                      "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
+                      i === currentImageIndex ? "opacity-100" : "opacity-0"
+                    )}
+                    loading={i === 0 ? "eager" : "lazy"}
+                    decoding="async"
+                    {...(i === 0 ? { fetchPriority: "high" } : {})}
+                  />
+                ) : (
+                  <img
+                    key={img.src}
+                    src={img.src}
+                    alt={`${property.name} ${i + 1}/${images.length}`}
+                    className={cn(
+                      "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
+                      i === currentImageIndex ? "opacity-100" : "opacity-0"
+                    )}
+                    loading={i === 0 ? "eager" : "lazy"}
+                    decoding="async"
+                  />
+                )
+              ))}
+              {images.length > 1 && (
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 bg-black/40 rounded-full px-3 py-1.5">
+                  {images.map((_, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setCurrentImageIndex(i)}
                       className={cn(
-                        "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
-                        i === currentImageIndex ? "opacity-100" : "opacity-0"
+                        "w-2 h-2 rounded-full transition-colors",
+                        i === currentImageIndex ? "bg-white" : "bg-white/50"
                       )}
-                      loading={i === 0 ? "eager" : "lazy"}
-                      decoding="async"
-                      {...(i === 0 ? { fetchPriority: "high" } : {})}
+                      aria-label={`Kuva ${i + 1}`}
                     />
-                  ) : (
-                    <Image
-                      key={img.src}
-                      src={img.src}
-                      alt={`${property.name} ${i + 1}/${images.length}`}
-                      fill
-                      className={cn(
-                        "object-cover transition-opacity duration-500",
-                        i === currentImageIndex ? "opacity-100" : "opacity-0"
-                      )}
-                      sizes="(min-width: 1024px) 800px, 100vw"
-                      priority={i === 0}
-                    />
-                  )
-                ))}
-                {images.length > 1 && (
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 bg-black/40 rounded-full px-3 py-1.5">
-                    {images.map((_, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setCurrentImageIndex(i)}
-                        className={cn(
-                          "w-2 h-2 rounded-full transition-colors",
-                          i === currentImageIndex ? "bg-white" : "bg-white/50"
-                        )}
-                        aria-label={`Kuva ${i + 1}`}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Key Facts Bar */}
+          <KeyFactsBar property={property} />
+
+          {/* Highlights Pills */}
+          <HighlightsPills highlights={property.highlights} />
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid gap-8 lg:grid-cols-3">
+          {/* Left Column - Content */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Tablet: CTA card at top (not sticky) */}
+            <div className="hidden md:block lg:hidden">
+              <ContactCTACard property={property} />
+            </div>
+
+            {/* Description */}
+            {property.description && (
+              <section className="space-y-4">
+                <h2 className="text-xl font-semibold text-foreground">Kuvaus</h2>
+                <FormattedDescription text={property.description} />
+              </section>
             )}
 
+            {/* 3D Tour */}
             {matterportUrl && (
-              <section className="space-y-3">
+              <section className="space-y-4">
                 <h2 className="text-xl font-semibold text-foreground">3D-virtuaalikierros</h2>
                 <p className="text-sm text-muted-foreground">
                   Tutustu asuntoon 360°-kierroksella. Voit liikkua tilassa ja tarkastella joka kulmaa.
@@ -223,43 +255,26 @@ export default function PropertyPage() {
                 </p>
               </section>
             )}
+
+            {/* Location / Map */}
+            <LocationSection
+              address={property.address}
+              name={property.name}
+              location={property.location}
+            />
           </div>
 
-          <div className="space-y-6">
-            <div className="rounded-[16px] border border-border/70 bg-card p-6 shadow-[0_1px_2px_rgba(16,24,40,0.06)]">
-              <div className="flex items-center gap-2 mb-4">
-                <span
-                  className={cn(
-                    "inline-flex items-center px-3 py-1.5 rounded-[10px] text-sm font-medium",
-                    property.status === "available" ? "bg-primary text-primary-foreground" : "bg-secondary text-foreground"
-                  )}
-                >
-                  {property.status === "available" ? "Vapaa" : `Vapautuu ${property.availableDate || "pian"}`}
-                </span>
-                {matterportUrl && (
-                  <span className="inline-flex items-center px-3 py-1.5 rounded-[10px] text-sm font-medium bg-secondary text-foreground">
-                    360° 3D-kierros
-                  </span>
-                )}
-              </div>
-              <p className="text-2xl font-semibold text-foreground">
-                {property.price > 0 ? `${property.price.toLocaleString("fi-FI")} €/kk` : "Hinta sopimuksen mukaan"}
-              </p>
-              <ul className="mt-4 space-y-2 text-muted-foreground">
-                {property.size > 0 && <li>{property.size} m²</li>}
-                {property.rooms > 0 && <li>{property.rooms} {property.rooms === 1 ? "huone" : "huonetta"}</li>}
-                <li>{property.location}</li>
-              </ul>
-              <Link
-                href="/"
-                className="mt-6 inline-flex items-center justify-center w-full rounded-[12px] px-4 py-3 bg-primary text-primary-foreground font-medium hover:opacity-90 transition"
-              >
-                Takaisin kohteisiin
-              </Link>
+          {/* Right Column - Sticky CTA (Desktop only) */}
+          <div className="hidden lg:block">
+            <div className="sticky top-8">
+              <ContactCTACard property={property} />
             </div>
           </div>
         </div>
       </main>
+
+      {/* Mobile CTA Bar */}
+      <MobileCTABar property={property} />
     </div>
   )
 }
