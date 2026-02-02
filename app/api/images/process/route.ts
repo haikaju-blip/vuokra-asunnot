@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { readFile, writeFile, mkdir, unlink } from "fs/promises"
+import { readFile, mkdir, unlink, copyFile, readdir, rmdir } from "fs/promises"
 import { join } from "path"
 import { existsSync } from "fs"
 import sharp from "sharp"
@@ -10,67 +10,59 @@ const OUTPUT_DIR = "/opt/vuokra-platform/apps/esittely/public/images"
 interface ProcessRequest {
   propertyId: string
   images: string[]
-  copyToProperties?: string[] // Additional property IDs to copy processed images to
+  copyToProperties?: string[]
 }
 
-// Image sizes for different uses
+// Image sizes for responsive delivery (4:3 aspect ratio)
+// ChatGPT recommended optimal sizes for retina + performance
 const SIZES = {
-  thumbnail: { width: 400, height: 300 },
-  gallery: { width: 1200, height: 900 },
-  full: { width: 1920, height: 1440 }
-}
+  thumb: { width: 800, height: 600, quality: 75 },   // Mobile
+  card: { width: 1200, height: 900, quality: 78 },   // Tablet
+  large: { width: 1600, height: 1200, quality: 80 }, // Desktop retina
+  hero: { width: 2400, height: 1800, quality: 82 }   // Property page hero
+} as const
+
+type SizeName = keyof typeof SIZES
 
 async function processImage(
   inputPath: string,
   outputDir: string,
   index: number
-): Promise<void> {
+): Promise<string[]> {
   const inputBuffer = await readFile(inputPath)
+  const baseName = String(index).padStart(2, '0')
+  const generatedFiles: string[] = []
 
-  // Process with Sharp: normalize (auto-level), resize, compress
-  const image = sharp(inputBuffer)
-
-  // Get metadata
-  const metadata = await image.metadata()
-
-  // Process full-size image with auto-enhancement
-  const processed = image
-    .normalize() // Auto-level: stretches histogram to full range
+  // Create base processed image with enhancements
+  const baseImage = sharp(inputBuffer)
+    .normalize()
     .modulate({
-      brightness: 1.02, // Slight brightness boost
-      saturation: 1.05  // Slight saturation boost
+      brightness: 1.02,
+      saturation: 1.05
     })
-    .sharpen({ sigma: 0.5 }) // Light sharpening
+    .sharpen({ sigma: 0.5 })
 
-  // Determine output format (keep original or convert to JPEG)
-  const isTransparent = metadata.format === 'png' && metadata.channels === 4
-  const outputExt = isTransparent ? 'png' : 'jpg'
-  const outputName = `${String(index).padStart(2, '0')}.${outputExt}`
-  const outputPath = join(outputDir, outputName)
+  // Generate all size variants as WebP
+  for (const [sizeName, config] of Object.entries(SIZES)) {
+    const outputName = `${baseName}-${sizeName}.webp`
+    const outputPath = join(outputDir, outputName)
 
-  if (isTransparent) {
-    // Keep PNG for transparent images
-    await processed
-      .resize(SIZES.full.width, SIZES.full.height, {
-        fit: 'inside',
-        withoutEnlargement: true
+    await baseImage
+      .clone()
+      .resize(config.width, config.height, {
+        fit: 'cover',        // Crop to exact 4:3
+        position: 'center'   // Center crop
       })
-      .png({ quality: 85 })
-      .toFile(outputPath)
-  } else {
-    // Convert to optimized JPEG
-    await processed
-      .resize(SIZES.full.width, SIZES.full.height, {
-        fit: 'inside',
-        withoutEnlargement: true
-      })
-      .jpeg({
-        quality: 82,
-        progressive: true,
-        mozjpeg: true
+      .webp({
+        quality: config.quality,
+        effort: 6  // Higher effort = better compression
       })
       .toFile(outputPath)
+
+    generatedFiles.push(outputName)
   }
+
+  return generatedFiles
 }
 
 export async function POST(request: Request) {
@@ -95,7 +87,7 @@ export async function POST(request: Request) {
       )
     }
 
-    // Create output directories (main + copies)
+    // Create output directories
     const allOutputDirs = [outputDir, ...copyToProperties.map(id => join(OUTPUT_DIR, id))]
     for (const dir of allOutputDirs) {
       await mkdir(dir, { recursive: true })
@@ -103,7 +95,7 @@ export async function POST(request: Request) {
 
     // Process each selected image
     let processed = 0
-    const processedFiles: string[] = []
+    const allGeneratedFiles: string[] = []
 
     for (let i = 0; i < images.length; i++) {
       const imageName = images[i]
@@ -111,12 +103,9 @@ export async function POST(request: Request) {
 
       if (existsSync(inputPath)) {
         try {
-          await processImage(inputPath, outputDir, i + 1)
+          const files = await processImage(inputPath, outputDir, i + 1)
+          allGeneratedFiles.push(...files)
           processed++
-
-          // Track processed filename for copying
-          const ext = imageName.toLowerCase().endsWith('.png') ? 'png' : 'jpg'
-          processedFiles.push(`${String(i + 1).padStart(2, '0')}.${ext}`)
 
           // Remove from raw folder after processing
           await unlink(inputPath)
@@ -127,12 +116,11 @@ export async function POST(request: Request) {
     }
 
     // Copy processed images to related properties
-    const { copyFile } = await import("fs/promises")
     let copiedTo = 0
     for (const targetId of copyToProperties) {
       const targetDir = join(OUTPUT_DIR, targetId)
       try {
-        for (const filename of processedFiles) {
+        for (const filename of allGeneratedFiles) {
           const srcPath = join(outputDir, filename)
           const destPath = join(targetDir, filename)
           if (existsSync(srcPath)) {
@@ -146,17 +134,21 @@ export async function POST(request: Request) {
     }
 
     // Check if raw folder is empty and remove it
-    const { readdir } = await import("fs/promises")
     const remaining = await readdir(rawDir)
     if (remaining.length === 0) {
-      const { rmdir } = await import("fs/promises")
       await rmdir(rawDir)
     }
+
+    // Count generated files
+    const sizesGenerated = Object.keys(SIZES).length
+    const totalFiles = processed * sizesGenerated
 
     return NextResponse.json({
       success: true,
       processed,
       copiedTo,
+      totalFiles,
+      sizes: Object.keys(SIZES),
       outputDir: `/images/${propertyId}`
     })
   } catch (error) {

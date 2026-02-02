@@ -213,7 +213,8 @@ export default function ImageSelectorPage() {
 
       if (data.success) {
         const copyMsg = data.copiedTo > 0 ? ` Kopioitu ${data.copiedTo} muuhun kohteeseen.` : ""
-        setMessage(`Valmis! ${data.processed} kuvaa käsitelty.${copyMsg}`)
+        const sizesMsg = data.sizes ? ` (${data.sizes.join(", ")})` : ""
+        setMessage(`Valmis! ${data.processed} kuvaa → ${data.totalFiles} WebP-tiedostoa${sizesMsg}.${copyMsg}`)
         setSelectedImages(new Set())
         setSelectedRelated(new Set())
         // Reload raw images

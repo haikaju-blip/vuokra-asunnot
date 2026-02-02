@@ -1,10 +1,33 @@
 import { NextResponse } from "next/server"
-import { readFileSync } from "fs"
+import { readFileSync, existsSync, readdirSync } from "fs"
 import { join } from "path"
 import type { Property, RawProperty } from "@/lib/properties"
 
 const DATA_PATH = join(process.cwd(), "..", "..", "data", "properties.json")
+const IMAGES_DIR = join(process.cwd(), "public", "images")
 const MATTERPORT_BASE = "https://my.matterport.com/show"
+
+// Scan processed images folder and return base names (without size suffix)
+function getProcessedImages(dbId: number): string[] {
+  const folder = join(IMAGES_DIR, String(dbId))
+  if (!existsSync(folder)) return []
+
+  try {
+    const files = readdirSync(folder)
+    // Find unique base names from files like "01-large.webp", "01-card.webp"
+    const baseNames = new Set<string>()
+    for (const file of files) {
+      const match = file.match(/^(\d+)-\w+\.webp$/)
+      if (match) {
+        baseNames.add(match[1])
+      }
+    }
+    // Return sorted base names
+    return Array.from(baseNames).sort()
+  } catch {
+    return []
+  }
+}
 
 function transformProperty(raw: RawProperty): Property {
   const matterportUrl = raw.matterport
@@ -18,10 +41,12 @@ function transformProperty(raw: RawProperty): Property {
   const addressParts = raw.address.split(/\s+\d{5}\s+/)
   const name = addressParts[0] || raw.address
 
-  // Build gallery paths from images array
-  const gallery = raw.images?.length
-    ? raw.images.map((img) => `/images/${raw.db_id}/${img}`)
-    : []
+  // Get processed images (base names like "01", "02")
+  const processedImages = getProcessedImages(raw.db_id)
+
+  // Build gallery with base paths (component adds size suffix)
+  // Format: /images/{db_id}/{base} - component appends -large.webp etc
+  const gallery = processedImages.map(base => `/images/${raw.db_id}/${base}`)
 
   return {
     id: raw.id,
@@ -29,8 +54,8 @@ function transformProperty(raw: RawProperty): Property {
     name,
     address: raw.address,
     location: raw.city,
-    area: raw.city, // Use city as area for now
-    image: gallery[0] || "/placeholder.svg",
+    area: raw.city,
+    image: gallery[0] ? `${gallery[0]}-large.webp` : "/placeholder.svg",
     size: raw.area_m2 || 0,
     rooms: raw.rooms || 0,
     price: raw.rent || 0,

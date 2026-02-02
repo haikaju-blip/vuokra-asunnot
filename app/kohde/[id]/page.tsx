@@ -9,6 +9,14 @@ import type { Property } from "@/lib/properties"
 
 const ROTATE_INTERVAL_MS = 4000
 
+// Convert base path to sized image path
+function getImageSrc(basePath: string, size: "thumb" | "card" | "large" | "hero" = "hero"): string {
+  if (basePath.includes(".") || basePath === "/placeholder.svg") {
+    return basePath
+  }
+  return `${basePath}-${size}.webp`
+}
+
 export default function PropertyPage() {
   const params = useParams()
   const id = params?.id as string
@@ -41,7 +49,11 @@ export default function PropertyPage() {
       })
   }, [id])
 
-  const images = property?.gallery?.length ? property.gallery : property ? [property.image] : []
+  // Use hero-sized images for property detail page
+  const baseImages = property?.gallery?.length ? property.gallery : []
+  const images = baseImages.length
+    ? baseImages.map(base => getImageSrc(base, "hero"))
+    : property?.image ? [property.image] : []
 
   useEffect(() => {
     if (images.length <= 1) return
@@ -116,7 +128,6 @@ export default function PropertyPage() {
                       i === currentImageIndex ? "opacity-100" : "opacity-0"
                     )}
                     sizes="(max-width: 1024px) 100vw, 66vw"
-                    unoptimized
                     priority
                   />
                 ))}

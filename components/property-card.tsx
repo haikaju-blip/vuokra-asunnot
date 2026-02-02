@@ -12,10 +12,23 @@ interface PropertyCardProps {
 
 const ROTATE_INTERVAL_MS = 3000
 
+// Convert base path to sized image path
+// /images/38/01 -> /images/38/01-large.webp
+function getImageSrc(basePath: string, size: "thumb" | "card" | "large" | "hero" = "large"): string {
+  if (basePath.includes(".") || basePath === "/placeholder.svg") {
+    return basePath // Already has extension or is placeholder
+  }
+  return `${basePath}-${size}.webp`
+}
+
 export function PropertyCard({ property }: PropertyCardProps) {
   const isAvailable = property.status === "available"
   const href = `/kohde/${property.id}`
-  const images = property.gallery?.length ? property.gallery : [property.image || "/placeholder.svg"]
+  // Gallery contains base paths, we add size suffix
+  const baseImages = property.gallery?.length ? property.gallery : []
+  const images = baseImages.length
+    ? baseImages.map(base => getImageSrc(base, "large"))
+    : [property.image || "/placeholder.svg"]
   const [currentIndex, setCurrentIndex] = useState(0)
   const hasRotation = images.length > 1
 
@@ -46,7 +59,6 @@ export function PropertyCard({ property }: PropertyCardProps) {
                 i === currentIndex ? "opacity-100 z-0" : "opacity-0 z-0"
               )}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              unoptimized
             />
           ))}
           <div className="absolute top-3 left-3 flex flex-wrap gap-2">
