@@ -9,11 +9,13 @@ interface PropertyWithImages {
   id: string
   imageCount: number
   address: string | null
+  status: string | null
 }
 
 interface RawProperty {
   db_id: number
   address: string
+  status: string
 }
 
 export async function GET() {
@@ -31,8 +33,10 @@ export async function GET() {
     } catch {}
 
     const addressMap = new Map<string, string>()
+    const statusMap = new Map<string, string>()
     for (const p of propertyData) {
       addressMap.set(String(p.db_id), p.address)
+      statusMap.set(String(p.db_id), p.status)
     }
 
     const folders = await readdir(RAW_IMAGES_DIR)
@@ -52,7 +56,8 @@ export async function GET() {
           properties.push({
             id: folder,
             imageCount: imageFiles.length,
-            address: addressMap.get(folder) || null
+            address: addressMap.get(folder) || null,
+            status: statusMap.get(folder) || null
           })
         }
       }

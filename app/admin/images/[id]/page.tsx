@@ -34,6 +34,7 @@ interface PropertyWithImages {
   id: string
   imageCount: number
   address: string | null
+  status: string | null
 }
 
 export default function ImageSelectorPage() {
@@ -49,12 +50,19 @@ export default function ImageSelectorPage() {
   const [relatedProperties, setRelatedProperties] = useState<RelatedProperty[]>([])
   const [selectedRelated, setSelectedRelated] = useState<Set<string>>(new Set())
   const [allProperties, setAllProperties] = useState<PropertyWithImages[]>([])
+  const [doneProperties, setDoneProperties] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     // Load all properties with raw images (for sidebar)
     fetch("/api/images/raw")
       .then(res => res.json())
       .then(data => setAllProperties(data.properties || []))
+      .catch(() => {})
+
+    // Load done properties
+    fetch("/api/images/done")
+      .then(res => res.json())
+      .then(data => setDoneProperties(new Set(data.done || [])))
       .catch(() => {})
   }, [])
 
@@ -119,6 +127,45 @@ export default function ImageSelectorPage() {
 
   const selectNoneRelated = () => {
     setSelectedRelated(new Set())
+  }
+
+  const markDone = async () => {
+    try {
+      const res = await fetch("/api/images/done", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ propertyId })
+      })
+      if (res.ok) {
+        setDoneProperties(new Set([...doneProperties, propertyId]))
+        // Find next undone property
+        const nextProperty = allProperties.find(p =>
+          p.id !== propertyId && !doneProperties.has(p.id)
+        )
+        if (nextProperty) {
+          window.location.href = `/admin/images/${nextProperty.id}`
+        }
+      }
+    } catch (err) {
+      console.error("Failed to mark done:", err)
+    }
+  }
+
+  const unmarkDone = async () => {
+    try {
+      const res = await fetch("/api/images/done", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ propertyId })
+      })
+      if (res.ok) {
+        const newDone = new Set(doneProperties)
+        newDone.delete(propertyId)
+        setDoneProperties(newDone)
+      }
+    } catch (err) {
+      console.error("Failed to unmark:", err)
+    }
   }
 
   const deleteImage = async (filename: string, e: React.MouseEvent) => {
@@ -229,7 +276,7 @@ export default function ImageSelectorPage() {
           </Link>
           <h2 className="font-semibold mt-2">Kohteet</h2>
           <p className="text-xs text-muted-foreground">
-            {allProperties.length} kohdetta joilla kuvia
+            {allProperties.filter(p => doneProperties.has(p.id)).length} / {allProperties.length} valmis
           </p>
         </div>
         <nav className="p-2">
@@ -244,7 +291,10 @@ export default function ImageSelectorPage() {
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-medium">#{p.id}</span>
+                <span className="font-medium flex items-center gap-1">
+                  {doneProperties.has(p.id) && <span className="text-green-500">✓</span>}
+                  #{p.id}
+                </span>
                 <span className="text-xs opacity-70">
                   {p.imageCount} kuvaa
                 </span>
@@ -278,13 +328,30 @@ export default function ImageSelectorPage() {
                 <p className="text-sm text-muted-foreground">{property.address}</p>
               )}
             </div>
-            <div className="text-right">
-              <p className="text-sm text-muted-foreground">
-                {rawImages.length} raakakuvaa
-              </p>
-              <p className="text-sm font-medium">
-                {selectedImages.size} valittu
-              </p>
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <p className="text-sm text-muted-foreground">
+                  {rawImages.length} raakakuvaa
+                </p>
+                <p className="text-sm font-medium">
+                  {selectedImages.size} valittu
+                </p>
+              </div>
+              {doneProperties.has(propertyId) ? (
+                <button
+                  onClick={unmarkDone}
+                  className="px-4 py-2 text-sm font-medium rounded-lg bg-green-100 text-green-700 border border-green-300 hover:bg-green-200"
+                >
+                  ✓ Valmis
+                </button>
+              ) : (
+                <button
+                  onClick={markDone}
+                  className="px-4 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:opacity-90"
+                >
+                  Merkitse valmiiksi →
+                </button>
+              )}
             </div>
           </div>
         </header>
