@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
+import { Suspense } from "react"
 import "./globals.css"
+import { DevSidebar } from "@/components/dev-sidebar"
 
 export const metadata: Metadata = {
   title: "ELEA asunnot – Löydä unelmiesi koti",
@@ -19,7 +21,12 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="fi">
-      <body className="font-sans antialiased">{children}</body>
+      <body className="font-sans antialiased">
+        <Suspense fallback={null}>
+          <DevSidebar />
+        </Suspense>
+        {children}
+      </body>
     </html>
   )
 }

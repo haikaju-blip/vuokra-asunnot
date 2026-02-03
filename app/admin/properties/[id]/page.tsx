@@ -209,6 +209,27 @@ export default function PropertyEditPage() {
     setSaving(false)
   }, [isDirty, saving, status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, neighborhood, highlights, description, notes, propertyId])
 
+  // Auto-save: tallenna 2s kuluttua muutoksesta
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    if (!isDirty || saving) return
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
+
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      handleSave()
+    }, 2000)
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current)
+      }
+    }
+  }, [isDirty, saving, handleSave])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
