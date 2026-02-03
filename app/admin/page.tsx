@@ -98,7 +98,11 @@ export default function AdminDashboard() {
                 className="flex items-center justify-between p-3 rounded-[12px] hover:bg-secondary transition"
               >
                 <div>
-                  <p className="text-sm font-medium">{p.address}</p>
+                  <p className="text-sm font-medium">
+                    <span className="text-muted-foreground">{p.db_id}</span>
+                    <span className="text-muted-foreground mx-1">·</span>
+                    {p.address}
+                  </p>
                   <p className="text-xs text-muted-foreground">
                     {p.area_m2 && `${p.area_m2} m²`}
                     {p.area_m2 && p.rooms && " · "}

@@ -29,6 +29,20 @@ function getProcessedImages(dbId: number): string[] {
   }
 }
 
+// Format date as "28.2.26" (d.M.yy)
+function formatAvailableDate(isoDate: string | null | undefined): string | undefined {
+  if (!isoDate) return undefined
+  try {
+    const date = new Date(isoDate)
+    const day = date.getDate()
+    const month = date.getMonth() + 1
+    const year = String(date.getFullYear()).slice(-2)
+    return `${day}.${month}.${year}`
+  } catch {
+    return undefined
+  }
+}
+
 function transformProperty(raw: RawProperty): Property {
   const matterportUrl = raw.matterport
     ? `${MATTERPORT_BASE}/?m=${raw.matterport}`
@@ -36,6 +50,9 @@ function transformProperty(raw: RawProperty): Property {
 
   // Map status: "available" stays, "rented" becomes "upcoming" (or filter out)
   const status = raw.status === "available" ? "available" : "upcoming"
+
+  // Format available date for display
+  const availableDate = formatAvailableDate(raw.available_date)
 
   // Extract name from address (remove postal code)
   const addressParts = raw.address.split(/\s+\d{5}\s+/)
@@ -60,6 +77,7 @@ function transformProperty(raw: RawProperty): Property {
     rooms: raw.rooms || 0,
     price: raw.rent || 0,
     status,
+    availableDate,
     matterportUrl,
     gallery: gallery.length ? gallery : undefined,
     public: raw.public,
@@ -71,8 +89,10 @@ export async function GET() {
     const data = readFileSync(DATA_PATH, "utf-8")
     const rawProperties: RawProperty[] = JSON.parse(data)
 
-    // Transform and filter (only public properties, or all for now)
-    const properties = rawProperties.map(transformProperty)
+    // Transform and filter - only public properties
+    const properties = rawProperties
+      .filter(p => p.public === true)
+      .map(transformProperty)
 
     return NextResponse.json(properties)
   } catch (error) {

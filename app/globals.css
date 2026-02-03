@@ -57,3 +57,22 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Piilota number-inputin spinnerit (Firefox cursor bug fix) */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox cursor fix */
+input, textarea, select, button {
+  cursor: auto;
+}
+input:focus, textarea:focus, select:focus {
+  cursor: text;
+}

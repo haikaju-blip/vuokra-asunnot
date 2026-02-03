@@ -58,7 +58,10 @@ export default function PropertyEditPage() {
   const [isDirty, setIsDirty] = useState(false)
   const [newHighlight, setNewHighlight] = useState("")
   const [showHighlightInput, setShowHighlightInput] = useState(false)
+  const [editingHighlightIndex, setEditingHighlightIndex] = useState<number | null>(null)
+  const [editingHighlightValue, setEditingHighlightValue] = useState("")
   const highlightInputRef = useRef<HTMLInputElement>(null)
+  const editHighlightInputRef = useRef<HTMLInputElement>(null)
   const [rawImages, setRawImages] = useState<{ name: string; path: string }[]>([])
 
   // Form state
@@ -246,11 +249,38 @@ export default function PropertyEditPage() {
     setHighlights(highlights.filter((_, i) => i !== index))
   }
 
+  const startEditHighlight = (index: number) => {
+    setEditingHighlightIndex(index)
+    setEditingHighlightValue(highlights[index])
+  }
+
+  const saveEditHighlight = () => {
+    if (editingHighlightIndex !== null && editingHighlightValue.trim()) {
+      const newHighlights = [...highlights]
+      newHighlights[editingHighlightIndex] = editingHighlightValue.trim()
+      setHighlights(newHighlights)
+    }
+    setEditingHighlightIndex(null)
+    setEditingHighlightValue("")
+  }
+
+  const cancelEditHighlight = () => {
+    setEditingHighlightIndex(null)
+    setEditingHighlightValue("")
+  }
+
   useEffect(() => {
     if (showHighlightInput && highlightInputRef.current) {
       highlightInputRef.current.focus()
     }
   }, [showHighlightInput])
+
+  useEffect(() => {
+    if (editingHighlightIndex !== null && editHighlightInputRef.current) {
+      editHighlightInputRef.current.focus()
+      editHighlightInputRef.current.select()
+    }
+  }, [editingHighlightIndex])
 
   if (loading) {
     return (
@@ -301,7 +331,11 @@ export default function PropertyEditPage() {
 
             {/* Title */}
             <div>
-              <h1 className="text-base font-semibold">{streetAddress}</h1>
+              <h1 className="text-base font-semibold">
+                <span className="text-muted-foreground">{property.db_id}</span>
+                <span className="text-muted-foreground mx-1.5">·</span>
+                {streetAddress}
+              </h1>
               <p className="text-xs text-muted-foreground">{property.city}</p>
             </div>
           </div>
@@ -501,18 +535,44 @@ export default function PropertyEditPage() {
               <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Highlights</h2>
               <div className="flex flex-wrap gap-1.5">
                 {highlights.map((h, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] bg-secondary text-sm group"
-                  >
-                    {h}
-                    <button
-                      onClick={() => removeHighlight(i)}
-                      className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                  editingHighlightIndex === i ? (
+                    <input
+                      key={i}
+                      ref={editHighlightInputRef}
+                      type="text"
+                      value={editingHighlightValue}
+                      onChange={(e) => setEditingHighlightValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault()
+                          saveEditHighlight()
+                        }
+                        if (e.key === "Escape") {
+                          cancelEditHighlight()
+                        }
+                      }}
+                      onBlur={saveEditHighlight}
+                      className="px-2 py-0.5 text-sm rounded-[6px] border border-primary bg-background focus:outline-none focus:ring-2 focus:ring-ring min-w-[80px]"
+                    />
+                  ) : (
+                    <span
+                      key={i}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] bg-secondary text-sm group cursor-pointer hover:bg-secondary/70"
+                      onClick={() => startEditHighlight(i)}
+                      title="Klikkaa muokataksesi"
                     >
-                      ×
-                    </button>
-                  </span>
+                      {h}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          removeHighlight(i)
+                        }}
+                        className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  )
                 ))}
                 {showHighlightInput ? (
                   <input

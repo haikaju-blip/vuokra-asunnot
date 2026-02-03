@@ -2,27 +2,23 @@
 
 import { cn } from "@/lib/utils"
 
+const ALL_AREAS = ["Espoo", "Helsinki", "Kirkkonummi", "Klaukkala", "Oulu", "Vantaa"]
+
 interface FilterBarProps {
   selectedArea: string
   onAreaChange: (area: string) => void
-  selectedTab: "available" | "upcoming"
-  onTabChange: (tab: "available" | "upcoming") => void
-  availableCount: number
-  upcomingCount: number
-  areas?: string[]
+  totalCount: number
+  activeAreas: string[]  // Areas that have properties
 }
 
 export function FilterBar({
   selectedArea,
   onAreaChange,
-  selectedTab,
-  onTabChange,
-  availableCount,
-  upcomingCount,
-  areas = [],
+  totalCount,
+  activeAreas,
 }: FilterBarProps) {
-  // Toggle: jos klikataan jo valittua aluetta, palataan näyttämään kaikki
   const handleAreaClick = (area: string) => {
+    if (!activeAreas.includes(area)) return // Don't allow clicking inactive areas
     if (selectedArea === area) {
       onAreaChange("all")
     } else {
@@ -32,65 +28,36 @@ export function FilterBar({
 
   return (
     <div className="bg-card rounded-[16px] border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)] p-4">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-          <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Valitse alue">
-            {areas.map((area) => (
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Valitse alue">
+          {ALL_AREAS.map((area) => {
+            const isActive = activeAreas.includes(area)
+            const isSelected = selectedArea === area
+
+            return (
               <button
                 key={area}
                 onClick={() => handleAreaClick(area)}
+                disabled={!isActive}
                 className={cn(
                   "px-4 py-2 rounded-[12px] text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border",
-                  selectedArea === area
+                  isSelected
                     ? "bg-primary text-primary-foreground border-transparent"
-                    : "bg-transparent text-foreground border-border/80 hover:bg-secondary"
+                    : isActive
+                      ? "bg-transparent text-foreground border-border/80 hover:bg-secondary"
+                      : "bg-transparent text-muted-foreground/50 border-border/40 cursor-default"
                 )}
-                aria-pressed={selectedArea === area}
+                aria-pressed={isSelected}
+                aria-disabled={!isActive}
               >
                 {area}
               </button>
-            ))}
-          </div>
-          <div className="hidden sm:block w-px h-6 bg-border" aria-hidden="true" />
-          <div className="flex items-center gap-1 p-1 bg-secondary rounded-[12px] border border-border/70" role="tablist" aria-label="Saatavuus">
-            <button
-              role="tab"
-              aria-selected={selectedTab === "available"}
-              onClick={() => onTabChange("available")}
-              className={cn(
-                "px-4 py-2 rounded-[8px] text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-transparent",
-                selectedTab === "available"
-                  ? "bg-card text-card-foreground border border-border/70"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Vapaat
-            </button>
-            <button
-              role="tab"
-              aria-selected={selectedTab === "upcoming"}
-              onClick={() => onTabChange("upcoming")}
-              className={cn(
-                "px-4 py-2 rounded-[8px] text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring border border-transparent",
-                selectedTab === "upcoming"
-                  ? "bg-card text-card-foreground border border-border/70"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              Vapautuvat
-            </button>
-          </div>
+            )
+          })}
         </div>
-        <div className="flex items-center gap-4 text-sm" aria-live="polite">
-          <span className="text-foreground">
-            <span className="font-semibold">{availableCount}</span>
-            <span className="text-muted-foreground"> Vapaita</span>
-          </span>
-          <span className="text-border">/</span>
-          <span className="text-foreground">
-            <span className="font-semibold">{upcomingCount}</span>
-            <span className="text-muted-foreground"> Vapautumassa</span>
-          </span>
+        <div className="text-sm" aria-live="polite">
+          <span className="font-semibold">{totalCount}</span>
+          <span className="text-muted-foreground"> {totalCount === 1 ? "kohde" : "kohdetta"}</span>
         </div>
       </div>
     </div>

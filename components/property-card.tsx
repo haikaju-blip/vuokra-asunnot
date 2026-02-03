@@ -95,21 +95,26 @@ export function PropertyCard({ property }: PropertyCardProps) {
               />
             )
           ))}
-          <div className="absolute top-3 left-3 flex flex-wrap gap-2">
+          <div className="absolute top-3 left-3">
             <span
               className={cn(
                 "inline-flex items-center px-3 py-1.5 rounded-[10px] text-sm font-medium backdrop-blur-md ring-1 ring-black/5",
                 isAvailable ? "bg-primary text-primary-foreground" : "bg-white/85 text-foreground"
               )}
             >
-              {isAvailable ? "Vapaa" : `Vapautuu ${property.availableDate}`}
+              {isAvailable ? "Vapaa" : `Vapaa ${property.availableDate}`}
             </span>
-            {property.matterportUrl && (
-              <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-[10px] text-sm font-medium bg-white/90 text-foreground backdrop-blur-md ring-1 ring-black/5">
-                <span aria-hidden>360°</span> 3D-kierros
-              </span>
-            )}
           </div>
+          {property.matterportUrl && (
+            <div className="absolute top-3 right-3">
+              <span
+                className="inline-flex items-center justify-center w-10 h-10 rounded-full text-xs font-bold bg-white/90 text-foreground backdrop-blur-md ring-1 ring-black/5"
+                aria-label="3D-kierros saatavilla"
+              >
+                3D
+              </span>
+            </div>
+          )}
           {hasRotation && (
             <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
               {images.map((_, i) => (
@@ -131,7 +136,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
               {property.name}
             </h3>
             <p className="text-[13px] text-muted-foreground">
-              {property.location} · {property.area}
+              {property.location}
             </p>
           </div>
           <p className="text-[13px] text-muted-foreground">
@@ -164,11 +169,6 @@ export function PropertyCard({ property }: PropertyCardProps) {
               }, [])
             })()}
           </p>
-          <div className="pt-1">
-            <span className="inline-flex items-center justify-center rounded-[12px] px-4 py-2 text-[13px] font-medium border border-border/80 bg-card hover:bg-secondary transition">
-              Katso kohde <span className="ml-2" aria-hidden="true">→</span>
-            </span>
-          </div>
         </div>
       </article>
     </Link>

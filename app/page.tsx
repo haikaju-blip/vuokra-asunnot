@@ -6,13 +6,12 @@ import { FilterBar } from "@/components/filter-bar"
 import { PropertyGrid } from "@/components/property-grid"
 import type { Property } from "@/lib/properties"
 
-const ITEMS_PER_PAGE = 4
+const ITEMS_PER_PAGE = 12
 
 export default function PropertiesPage() {
   const [properties, setProperties] = useState<Property[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedArea, setSelectedArea] = useState("all")
-  const [selectedTab, setSelectedTab] = useState<"available" | "upcoming">("available")
   const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE)
 
   useEffect(() => {
@@ -28,28 +27,16 @@ export default function PropertiesPage() {
       })
   }, [])
 
-  // Get unique areas from properties
-  const areas = useMemo(() => {
-    const uniqueAreas = [...new Set(properties.map((p) => p.area))]
-    return uniqueAreas.sort()
+  // Get areas that have properties (for enabling/disabling filter buttons)
+  const activeAreas = useMemo(() => {
+    return [...new Set(properties.map((p) => p.area))]
   }, [properties])
 
+  // Filter by area only, show all statuses together
   const filteredProperties = useMemo(() => {
     return properties.filter((p) => {
-      const matchesArea = selectedArea === "all" || p.area === selectedArea
-      return matchesArea && p.status === selectedTab
+      return selectedArea === "all" || p.area === selectedArea
     })
-  }, [properties, selectedArea, selectedTab])
-
-  const counts = useMemo(() => {
-    const filtered = properties.filter((p) => {
-      const matchesArea = selectedArea === "all" || p.area === selectedArea
-      return matchesArea
-    })
-    return {
-      available: filtered.filter((p) => p.status === "available").length,
-      upcoming: filtered.filter((p) => p.status === "upcoming").length,
-    }
   }, [properties, selectedArea])
 
   const visibleProperties = filteredProperties.slice(0, visibleCount)
@@ -57,10 +44,6 @@ export default function PropertiesPage() {
 
   const handleAreaChange = (area: string) => {
     setSelectedArea(area)
-    setVisibleCount(ITEMS_PER_PAGE)
-  }
-  const handleTabChange = (tab: "available" | "upcoming") => {
-    setSelectedTab(tab)
     setVisibleCount(ITEMS_PER_PAGE)
   }
 
@@ -91,11 +74,8 @@ export default function PropertiesPage() {
             <FilterBar
               selectedArea={selectedArea}
               onAreaChange={handleAreaChange}
-              selectedTab={selectedTab}
-              onTabChange={handleTabChange}
-              availableCount={counts.available}
-              upcomingCount={counts.upcoming}
-              areas={areas}
+              totalCount={filteredProperties.length}
+              activeAreas={activeAreas}
             />
 
             <PropertyGrid

@@ -39,6 +39,7 @@ export interface RawProperty {
   landlord: string
   contract_status: string
   status: string
+  available_date?: string | null
   matterport: string | null
   images: string[]
   public: boolean

@@ -5,6 +5,12 @@ import { existsSync } from "fs"
 
 const RAW_IMAGES_DIR = "/srv/shared/DROPZONE/vuokra-images-raw"
 
+// Pura db_id kansion nimestä (esim. "5 - Kauppalinnankatu 1 J85" → "5")
+function extractDbId(folderName: string): string {
+  const match = folderName.match(/^(\d+)/)
+  return match ? match[1] : folderName
+}
+
 interface PropertyWithImages {
   id: string
   imageCount: number
@@ -53,11 +59,12 @@ export async function GET() {
         )
 
         if (imageFiles.length > 0) {
+          const dbId = extractDbId(folder)
           properties.push({
-            id: folder,
+            id: dbId,
             imageCount: imageFiles.length,
-            address: addressMap.get(folder) || null,
-            status: statusMap.get(folder) || null
+            address: addressMap.get(dbId) || null,
+            status: statusMap.get(dbId) || null
           })
         }
       }

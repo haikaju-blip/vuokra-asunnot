@@ -1,11 +1,21 @@
 import { NextResponse } from "next/server"
 import { readFile, mkdir, unlink, copyFile, readdir, rmdir } from "fs/promises"
 import { join } from "path"
-import { existsSync } from "fs"
+import { existsSync, readdirSync } from "fs"
 import sharp from "sharp"
 
 const RAW_IMAGES_DIR = "/srv/shared/DROPZONE/vuokra-images-raw"
 const OUTPUT_DIR = "/opt/vuokra-platform/apps/esittely/public/images"
+
+// Etsi kansio joka alkaa db_id:llä
+function findFolderForId(id: string): string | null {
+  if (!existsSync(RAW_IMAGES_DIR)) return null
+  const folders = readdirSync(RAW_IMAGES_DIR)
+  if (folders.includes(id)) return join(RAW_IMAGES_DIR, id)
+  const match = folders.find(f => f.startsWith(`${id} - `) || f.startsWith(`${id} -`))
+  if (match) return join(RAW_IMAGES_DIR, match)
+  return null
+}
 
 interface ProcessRequest {
   propertyId: string
@@ -33,14 +43,8 @@ async function processImage(
   const baseName = String(index).padStart(2, '0')
   const generatedFiles: string[] = []
 
-  // Create base processed image with enhancements
+  // Ei muokata kuvia - vain resize ja WebP-muunnos
   const baseImage = sharp(inputBuffer)
-    .normalize()
-    .modulate({
-      brightness: 1.02,
-      saturation: 1.05
-    })
-    .sharpen({ sigma: 0.5 })
 
   // Generate all size variants as WebP
   for (const [sizeName, config] of Object.entries(SIZES)) {
@@ -50,12 +54,12 @@ async function processImage(
     await baseImage
       .clone()
       .resize(config.width, config.height, {
-        fit: 'cover',        // Crop to exact 4:3
-        position: 'center'   // Center crop
+        fit: 'cover',
+        position: 'center'
       })
       .webp({
-        quality: config.quality,
-        effort: 6  // Higher effort = better compression
+        quality: 90,  // Korkea laatu
+        effort: 4
       })
       .toFile(outputPath)
 
@@ -77,10 +81,10 @@ export async function POST(request: Request) {
       )
     }
 
-    const rawDir = join(RAW_IMAGES_DIR, propertyId)
+    const rawDir = findFolderForId(propertyId)
     const outputDir = join(OUTPUT_DIR, propertyId)
 
-    if (!existsSync(rawDir)) {
+    if (!rawDir) {
       return NextResponse.json(
         { error: "Raw images directory not found" },
         { status: 404 }
@@ -106,9 +110,7 @@ export async function POST(request: Request) {
           const files = await processImage(inputPath, outputDir, i + 1)
           allGeneratedFiles.push(...files)
           processed++
-
-          // Remove from raw folder after processing
-          await unlink(inputPath)
+          // Raakakuvia EI poisteta - säilytetään varmuuskopiona
         } catch (err) {
           console.error(`Error processing ${imageName}:`, err)
         }
@@ -133,11 +135,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // Check if raw folder is empty and remove it
-    const remaining = await readdir(rawDir)
-    if (remaining.length === 0) {
-      await rmdir(rawDir)
-    }
+    // Raakakansio säilytetään
 
     // Count generated files
     const sizesGenerated = Object.keys(SIZES).length

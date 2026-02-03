@@ -51,6 +51,7 @@ export default function ImageSelectorPage() {
   const [selectedRelated, setSelectedRelated] = useState<Set<string>>(new Set())
   const [allProperties, setAllProperties] = useState<PropertyWithImages[]>([])
   const [doneProperties, setDoneProperties] = useState<Set<string>>(new Set())
+  const [moveFromIndex, setMoveFromIndex] = useState<number | null>(null)
 
   useEffect(() => {
     // Load all properties with raw images (for sidebar)
@@ -111,6 +112,39 @@ export default function ImageSelectorPage() {
     setSelectedImages(new Set())
   }
 
+  // Klikkaa numeroa siirtääksesi kuvan
+  const handleMoveClick = async (index: number) => {
+    if (moveFromIndex === null) {
+      // Valitse kuva siirrettäväksi
+      setMoveFromIndex(index)
+    } else if (moveFromIndex === index) {
+      // Peru valinta
+      setMoveFromIndex(null)
+    } else {
+      // Siirrä kuva ja tallenna
+      const newImages = [...rawImages]
+      const [moved] = newImages.splice(moveFromIndex, 1)
+      newImages.splice(index, 0, moved)
+      setRawImages(newImages)
+      setMoveFromIndex(null)
+
+      // Tallenna palvelimelle
+      try {
+        await fetch(`/api/images/raw/${propertyId}/reorder`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order: newImages.map(img => img.name) })
+        })
+        // Lataa uudelleen saadaksesi uudet tiedostonimet
+        const res = await fetch(`/api/images/raw/${propertyId}`)
+        const data = await res.json()
+        setRawImages(data.images || [])
+      } catch (err) {
+        console.error("Reorder failed:", err)
+      }
+    }
+  }
+
   const toggleRelated = (id: string) => {
     const newSelected = new Set(selectedRelated)
     if (newSelected.has(id)) {
@@ -167,6 +201,7 @@ export default function ImageSelectorPage() {
       console.error("Failed to unmark:", err)
     }
   }
+
 
   const deleteImage = async (filename: string, e: React.MouseEvent) => {
     e.preventDefault()
@@ -323,11 +358,14 @@ export default function ImageSelectorPage() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl font-semibold">
-                Kohde #{propertyId}
+                <span className="text-muted-foreground">{propertyId}</span>
+                {property && (
+                  <>
+                    <span className="text-muted-foreground mx-2">·</span>
+                    {property.address}
+                  </>
+                )}
               </h1>
-              {property && (
-                <p className="text-sm text-muted-foreground">{property.address}</p>
-              )}
             </div>
             <div className="flex items-center gap-4">
               <div className="text-right">
@@ -369,7 +407,7 @@ export default function ImageSelectorPage() {
           </div>
         ) : (
           <>
-            <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-center gap-4 mb-6 flex-wrap">
               <button
                 onClick={selectAll}
                 className="px-4 py-2 text-sm rounded-lg border border-border hover:bg-secondary"
@@ -382,6 +420,23 @@ export default function ImageSelectorPage() {
               >
                 Poista valinnat
               </button>
+              {moveFromIndex !== null ? (
+                <span className="text-sm text-green-600 font-medium">
+                  Klikkaa kohtaa johon siirrät kuvan {moveFromIndex + 1}
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  Klikkaa numeroa siirtääksesi
+                </span>
+              )}
+              {moveFromIndex !== null && (
+                <button
+                  onClick={() => setMoveFromIndex(null)}
+                  className="px-3 py-1 text-xs rounded bg-secondary hover:bg-secondary/80"
+                >
+                  Peru
+                </button>
+              )}
               <div className="flex-1" />
               <button
                 onClick={processImages}
@@ -460,39 +515,55 @@ export default function ImageSelectorPage() {
             )}
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {rawImages.map((img) => (
-                <label
+              {rawImages.map((img, index) => (
+                <div
                   key={img.name}
-                  className={`relative cursor-pointer rounded-lg overflow-hidden border-2 transition ${
-                    selectedImages.has(img.name)
-                      ? "border-primary ring-2 ring-primary/20"
-                      : "border-border hover:border-primary/50"
+                  className={`relative rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                    moveFromIndex === index
+                      ? "border-primary ring-4 ring-primary/30 scale-[1.02] shadow-lg"
+                      : moveFromIndex !== null
+                        ? "border-dashed border-green-500 hover:border-green-400 hover:bg-green-50"
+                        : selectedImages.has(img.name)
+                          ? "border-primary ring-2 ring-primary/20"
+                          : "border-border hover:border-primary/50"
                   }`}
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedImages.has(img.name)}
-                    onChange={() => toggleImage(img.name)}
-                    className="sr-only"
-                  />
-                  <div className="aspect-[4/3] relative bg-muted">
+                  <div
+                    className="aspect-[4/3] relative bg-muted cursor-pointer"
+                    onClick={() => toggleImage(img.name)}
+                  >
                     <Image
                       src={img.path}
                       alt={img.name}
                       fill
-                      className="object-cover"
+                      className="object-cover pointer-events-none"
                       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
                       unoptimized
+                      draggable={false}
                     />
+                    {/* Järjestysnumero - klikattava siirtopainike */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleMoveClick(index); }}
+                      className={`absolute top-2 left-2 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
+                        moveFromIndex === index
+                          ? "bg-primary text-white scale-110 shadow-lg"
+                          : moveFromIndex !== null
+                            ? "bg-green-500 text-white hover:bg-green-400 hover:scale-110"
+                            : "bg-black/70 text-white hover:bg-primary"
+                      }`}
+                      title={moveFromIndex === index ? "Peru" : moveFromIndex !== null ? `Siirrä tähän (${index + 1})` : "Siirrä"}
+                    >
+                      {moveFromIndex === index ? "✓" : moveFromIndex !== null ? index + 1 : index + 1}
+                    </button>
                     {selectedImages.has(img.name) && (
-                      <div className="absolute top-2 right-8 w-6 h-6 bg-primary rounded-full flex items-center justify-center">
+                      <div className="absolute top-2 right-8 w-6 h-6 bg-primary rounded-full flex items-center justify-center pointer-events-none">
                         <svg className="w-4 h-4 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
                     )}
                     <button
-                      onClick={(e) => deleteImage(img.name, e)}
+                      onClick={(e) => { e.stopPropagation(); deleteImage(img.name, e); }}
                       className="absolute top-2 right-2 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center opacity-70 hover:opacity-100 transition"
                       title="Poista kuva"
                     >
@@ -502,14 +573,10 @@ export default function ImageSelectorPage() {
                     </button>
                   </div>
                   <div className="p-2 bg-card">
-                    <p className="text-xs truncate" title={img.name}>
-                      {img.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {img.sizeFormatted}
-                    </p>
+                    <p className="text-xs truncate" title={img.name}>{img.name}</p>
+                    <p className="text-xs text-muted-foreground">{img.sizeFormatted}</p>
                   </div>
-                </label>
+                </div>
               ))}
             </div>
           </>

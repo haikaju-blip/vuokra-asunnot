@@ -19,7 +19,7 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-background flex">
       <AdminSidebar />
-      <main className="flex-1 min-w-0 overflow-x-hidden">
+      <main className="flex-1 min-w-0 overflow-x-hidden" style={{ cursor: 'auto' }}>
         {children}
       </main>
     </div>

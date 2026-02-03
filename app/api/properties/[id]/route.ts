@@ -1,10 +1,32 @@
 import { NextResponse } from "next/server"
-import { readFileSync } from "fs"
+import { readFileSync, readdirSync, existsSync } from "fs"
 import { join } from "path"
 import type { Property, RawProperty } from "@/lib/properties"
 
 const DATA_PATH = join(process.cwd(), "..", "..", "data", "properties.json")
+const IMAGES_DIR = join(process.cwd(), "public", "images")
 const MATTERPORT_BASE = "https://my.matterport.com/show"
+
+// Hae kuvat kansiosta (WebP-muodossa)
+function getProcessedImages(dbId: number): string[] {
+  const dir = join(IMAGES_DIR, String(dbId))
+  if (!existsSync(dir)) return []
+
+  try {
+    const files = readdirSync(dir)
+    // Hae uniikit base-nimet (01, 02, jne.)
+    const baseNames = new Set<string>()
+    for (const file of files) {
+      const match = file.match(/^(\d+)-\w+\.webp$/)
+      if (match) {
+        baseNames.add(match[1])
+      }
+    }
+    return Array.from(baseNames).sort()
+  } catch {
+    return []
+  }
+}
 
 function transformProperty(raw: RawProperty): Property {
   const matterportUrl = raw.matterport
@@ -16,9 +38,10 @@ function transformProperty(raw: RawProperty): Property {
   const addressParts = raw.address.split(/\s+\d{5}\s+/)
   const name = addressParts[0] || raw.address
 
-  const gallery = raw.images?.length
-    ? raw.images.map((img) => `/images/${raw.db_id}/${img}`)
-    : []
+  // Hae kuvat levyltä (WebP base-nimet)
+  const processedImages = getProcessedImages(raw.db_id)
+  // Muodosta gallery base-poluista
+  const gallery = processedImages.map(base => `/images/${raw.db_id}/${base}`)
 
   return {
     id: raw.id,
@@ -27,7 +50,7 @@ function transformProperty(raw: RawProperty): Property {
     address: raw.address,
     location: raw.city,
     area: raw.city,
-    image: gallery[0] || "/placeholder.svg",
+    image: gallery[0] ? `${gallery[0]}-large.webp` : "/placeholder.svg",
     size: raw.area_m2 || 0,
     rooms: raw.rooms || 0,
     price: raw.rent || 0,

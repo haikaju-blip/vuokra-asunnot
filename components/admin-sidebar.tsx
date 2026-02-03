@@ -165,6 +165,7 @@ export function AdminSidebar() {
                             }`}
                             title={!p.public ? "Piilotettu" : p.status === "available" ? "Vapaa" : "Vuokrattu"}
                           />
+                          <span className={`text-xs ${isActive ? "opacity-70" : "text-muted-foreground"}`}>{p.db_id}</span>
                           <span className="truncate">{street}</span>
                         </div>
                       </Link>
