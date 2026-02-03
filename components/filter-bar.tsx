@@ -21,29 +21,33 @@ export function FilterBar({
   upcomingCount,
   areas = [],
 }: FilterBarProps) {
-  const areaOptions = [
-    { id: "all", label: "Kaikki" },
-    ...areas.map((area) => ({ id: area, label: area })),
-  ]
+  // Toggle: jos klikataan jo valittua aluetta, palataan näyttämään kaikki
+  const handleAreaClick = (area: string) => {
+    if (selectedArea === area) {
+      onAreaChange("all")
+    } else {
+      onAreaChange(area)
+    }
+  }
 
   return (
     <div className="bg-card rounded-[16px] border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)] p-4">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
           <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Valitse alue">
-            {areaOptions.map((area) => (
+            {areas.map((area) => (
               <button
-                key={area.id}
-                onClick={() => onAreaChange(area.id)}
+                key={area}
+                onClick={() => handleAreaClick(area)}
                 className={cn(
                   "px-4 py-2 rounded-[12px] text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border",
-                  selectedArea === area.id
+                  selectedArea === area
                     ? "bg-primary text-primary-foreground border-transparent"
                     : "bg-transparent text-foreground border-border/80 hover:bg-secondary"
                 )}
-                aria-pressed={selectedArea === area.id}
+                aria-pressed={selectedArea === area}
               >
-                {area.label}
+                {area}
               </button>
             ))}
           </div>

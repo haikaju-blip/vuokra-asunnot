@@ -77,22 +77,13 @@ export default function PropertiesPage() {
                 height={36}
                 className="rounded-[8px]"
               />
-              <span className="text-lg font-semibold text-foreground">ELEA asunnot</span>
+              <span className="text-lg font-semibold text-primary">ELEA asunnot – tie kotiisi</span>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 sm:py-12 space-y-10">
-        <div className="space-y-2">
-          <h1 className="text-3xl sm:text-4xl font-semibold text-foreground tracking-tight text-balance">
-            Löydä unelmiesi koti
-          </h1>
-          <p className="text-muted-foreground max-w-2xl">
-            Valitse alue ja katso vapaat tai pian vapautuvat kohteet.
-          </p>
-        </div>
-
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
         {loading ? (
           <div className="text-muted-foreground">Ladataan kohteita...</div>
         ) : (

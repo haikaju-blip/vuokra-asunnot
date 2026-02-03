@@ -48,3 +48,12 @@
     @apply bg-background text-foreground font-sans antialiased;
   }
 }
+
+/* Scrollbar piilotus mutta scroll toimii */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

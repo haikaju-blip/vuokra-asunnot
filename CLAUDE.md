@@ -1,3 +1,5 @@
+**EN TEE MITÄÄN, MILLE EN OLE KYSYNYT LUPAA.**
+
 # Vuokra-platform - UI-toteutuksen ohjeet
 
 ## Yleiset säännöt
