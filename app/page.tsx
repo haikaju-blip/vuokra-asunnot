@@ -114,7 +114,75 @@ export default function PropertiesPage() {
         )}
       </main>
 
-      <footer className="border-t border-border bg-card mt-16">
+      {/* Meistä-osio */}
+      <section className="bg-muted/30 border-t border-border">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
+          {/* Intro */}
+          <div className="max-w-3xl mx-auto text-center mb-12 sm:mb-16">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-foreground mb-4">
+              ELEA asunnot
+            </h2>
+            <p className="text-muted-foreground text-balance">
+              ELEA asunnot on perheyritys, joka vuokraa omia asuntojaan pitkäjänteisesti.
+              Meille asunto on koti, ei kauppatavara. Siksi pidämme kohteista huolta
+              suunnitelmallisesti ja hoidamme asioinnin selkeästi – suoraan omistajalta vuokralaiselle.
+            </p>
+          </div>
+
+          {/* Keitä olemme + Mikä tekee meistä erilaisen */}
+          <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+            {/* Keitä olemme */}
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold text-foreground">Keitä olemme</h3>
+              <div className="space-y-4 text-muted-foreground">
+                <p>
+                  Olemme omistaneet asuntoja 1980-luvulta lähtien. Toimintamme alkoi Oulussa,
+                  ja 2000-luvulta alkaen olemme laajentaneet myös pääkaupunkiseudulle.
+                </p>
+                <p>
+                  Emme rakenna toimintaa nopean ostamisen ja myymisen varaan. Omistamme kohteemme
+                  vuosikymmenien ajan ja kehitämme niitä maltilla, jotta asuminen pysyy hyvänä
+                  vuodesta toiseen.
+                </p>
+              </div>
+            </div>
+
+            {/* Mikä tekee meistä erilaisen */}
+            <div className="space-y-4">
+              <h3 className="text-xl font-semibold text-foreground">Mikä tekee meistä erilaisen</h3>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="p-4 rounded-[12px] bg-card border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)]">
+                  <h4 className="font-medium text-foreground mb-1">Suora asiointi</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Asioit suoraan omistavan tahon kanssa. Viestintä on selkeää ja reagointi nopeaa.
+                  </p>
+                </div>
+                <div className="p-4 rounded-[12px] bg-card border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)]">
+                  <h4 className="font-medium text-foreground mb-1">Pitkäjänteinen kehittäminen</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Huollamme ja parannamme kohteita suunnitelmallisesti, jotta koti toimii käytännössä.
+                  </p>
+                </div>
+                <div className="p-4 rounded-[12px] bg-card border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)]">
+                  <h4 className="font-medium text-foreground mb-1">Taloyhtiöasiat hallussa</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Pitkä kokemus taloyhtiöiden taloudesta ja hallinnosta. Ennakoimme korjauksia ja kustannuksia.
+                  </p>
+                </div>
+                <div className="p-4 rounded-[12px] bg-card border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)]">
+                  <h4 className="font-medium text-foreground mb-1">Ennakoitavuus</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Kun tunnemme kohteet ja niiden taustan, yllätyksiä tulee vähemmän.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <footer className="border-t border-border bg-card">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
           <p className="text-sm text-muted-foreground text-center">
             © 2026 ELEA asunnot. Kaikki oikeudet pidätetään.

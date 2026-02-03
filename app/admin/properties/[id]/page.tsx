@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
+import { PropertyContracts } from "@/components/property-contracts"
 
 interface RawProperty {
   db_id: number
@@ -630,6 +631,11 @@ export default function PropertyEditPage() {
               >
                 Hallitse kuvia →
               </Link>
+            </div>
+
+            {/* Contracts */}
+            <div className="border-t border-border pt-4">
+              <PropertyContracts propertyId={property.db_id} />
             </div>
 
             {/* Read-only info */}

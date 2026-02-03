@@ -226,6 +226,19 @@ export async function deleteContract(id: number) {
   revalidatePath("/admin/contracts");
 }
 
+export async function getContractsByProperty(propertyId: number) {
+  return db
+    .select({
+      contract: contracts,
+      tenant: tenants,
+    })
+    .from(contracts)
+    .innerJoin(tenants, eq(contracts.tenantId, tenants.id))
+    .where(eq(contracts.propertyId, propertyId))
+    .orderBy(desc(contracts.startDate))
+    .all();
+}
+
 export async function updateContractDocPaths(
   id: number,
   docxPath: string | null,
