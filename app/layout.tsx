@@ -3,6 +3,20 @@ import { Suspense } from "react"
 import "./globals.css"
 import { DevSidebar } from "@/components/dev-sidebar"
 
+// ELEA brand fonts from mockup - for testing
+import { DM_Serif_Display, DM_Sans } from "next/font/google"
+
+const dmSerifDisplay = DM_Serif_Display({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-heading",
+})
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-body",
+})
+
 export const metadata: Metadata = {
   title: "ELEA asunnot – Löydä unelmiesi koti",
   description: "Selaa vapaita ja pian vapautuvia ELEA-asuntoja. Selkeä tie kotiin.",
@@ -21,7 +35,7 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="fi">
-      <body className="font-sans antialiased">
+      <body className={`font-sans antialiased ${dmSerifDisplay.variable} ${dmSans.variable}`}>
         <Suspense fallback={null}>
           <DevSidebar />
         </Suspense>

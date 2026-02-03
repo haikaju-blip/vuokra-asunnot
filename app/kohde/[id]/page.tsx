@@ -3,7 +3,8 @@
 import { useParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
+import useEmblaCarousel from "embla-carousel-react"
 import { cn } from "@/lib/utils"
 import type { Property } from "@/lib/properties"
 import { KeyFactsBar } from "@/components/key-facts-bar"
@@ -13,8 +14,6 @@ import { MobileCTABar } from "@/components/mobile-cta-bar"
 import { LocationSection } from "@/components/location-section"
 import { FormattedDescription } from "@/components/formatted-description"
 
-const ROTATE_INTERVAL_MS = 4000
-
 // Convert base path to sized image path
 function getImageSrc(basePath: string, size: "thumb" | "card" | "large" | "hero" = "hero"): string {
   if (basePath.includes(".") || basePath === "/placeholder.svg") {
@@ -23,16 +22,11 @@ function getImageSrc(basePath: string, size: "thumb" | "card" | "large" | "hero"
   return `${basePath}-${size}.webp`
 }
 
-// Build srcSet for hero images
+// For property detail page, only use hero image (uncropped)
+// Don't use srcSet with card/large because they are cropped to 4:3
 function buildHeroSrcSet(basePath: string): string | undefined {
-  if (basePath.includes(".") || basePath === "/placeholder.svg") {
-    return undefined
-  }
-  return [
-    `${basePath}-card.webp 1200w`,
-    `${basePath}-large.webp 1600w`,
-    `${basePath}-hero.webp 2400w`,
-  ].join(", ")
+  // Return undefined to disable srcSet - use only the hero image
+  return undefined
 }
 
 export default function PropertyPage() {
@@ -42,8 +36,41 @@ export default function PropertyPage() {
   const [property, setProperty] = useState<Property | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [showMatterport, setShowMatterport] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(0)
+
+  // Embla carousel for hero gallery
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    loop: true,
+    dragFree: false,
+  })
+
+  const scrollPrev = useCallback(() => {
+    emblaApi?.scrollPrev()
+  }, [emblaApi])
+
+  const scrollNext = useCallback(() => {
+    emblaApi?.scrollNext()
+  }, [emblaApi])
+
+  const scrollTo = useCallback((index: number) => {
+    emblaApi?.scrollTo(index)
+  }, [emblaApi])
+
+  useEffect(() => {
+    if (!emblaApi) return
+
+    const onSelect = () => {
+      setSelectedIndex(emblaApi.selectedScrollSnap())
+    }
+
+    emblaApi.on("select", onSelect)
+    onSelect()
+
+    return () => {
+      emblaApi.off("select", onSelect)
+    }
+  }, [emblaApi])
 
   useEffect(() => {
     if (!id) return
@@ -77,13 +104,7 @@ export default function PropertyPage() {
       }))
     : property?.image ? [{ src: property.image, srcSet: undefined }] : []
 
-  useEffect(() => {
-    if (images.length <= 1) return
-    const t = setInterval(() => {
-      setCurrentImageIndex((i) => (i + 1) % images.length)
-    }, ROTATE_INTERVAL_MS)
-    return () => clearInterval(t)
-  }, [images.length])
+  const hasMultipleImages = images.length > 1
 
   if (loading) {
     return (
@@ -140,53 +161,113 @@ export default function PropertyPage() {
             <p className="text-muted-foreground">{property.location}</p>
           </div>
 
-          {/* Hero Image - 16:9 aspect ratio */}
+          {/* Hero Image - shows full image without cropping */}
           {images.length > 0 && images[0].src !== "/placeholder.svg" && (
-            <div className="rounded-[16px] overflow-hidden border border-border/70 bg-muted aspect-video relative">
-              {images.map((img, i) => (
-                img.srcSet ? (
-                  <img
-                    key={img.src}
-                    src={img.src}
-                    srcSet={img.srcSet}
-                    sizes="(min-width: 1024px) 800px, 100vw"
-                    alt={`${property.name} ${i + 1}/${images.length}`}
-                    className={cn(
-                      "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
-                      i === currentImageIndex ? "opacity-100" : "opacity-0"
-                    )}
-                    loading={i === 0 ? "eager" : "lazy"}
-                    decoding="async"
-                    {...(i === 0 ? { fetchPriority: "high" } : {})}
-                  />
-                ) : (
-                  <img
-                    key={img.src}
-                    src={img.src}
-                    alt={`${property.name} ${i + 1}/${images.length}`}
-                    className={cn(
-                      "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
-                      i === currentImageIndex ? "opacity-100" : "opacity-0"
-                    )}
-                    loading={i === 0 ? "eager" : "lazy"}
-                    decoding="async"
-                  />
-                )
-              ))}
-              {images.length > 1 && (
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 bg-black/40 rounded-full px-3 py-1.5">
+            <div className="rounded-[16px] overflow-hidden border border-border/70 bg-black relative group max-h-[70vh]">
+              {hasMultipleImages ? (
+                // Swipeable carousel
+                <div className="overflow-hidden h-full" ref={emblaRef}>
+                  <div className="flex h-full">
+                    {images.map((img, i) => (
+                      <div key={img.src} className="flex-none w-full min-w-0 flex items-center justify-center">
+                        {img.srcSet ? (
+                          <img
+                            src={img.src}
+                            srcSet={img.srcSet}
+                            sizes="(min-width: 1024px) 800px, 100vw"
+                            alt={`${property.name} ${i + 1}/${images.length}`}
+                            className="max-w-full max-h-[70vh] object-contain"
+                            loading={i === 0 ? "eager" : "lazy"}
+                            decoding="async"
+                            draggable={false}
+                            {...(i === 0 ? { fetchPriority: "high" } : {})}
+                          />
+                        ) : (
+                          <img
+                            src={img.src}
+                            alt={`${property.name} ${i + 1}/${images.length}`}
+                            className="max-w-full max-h-[70vh] object-contain"
+                            loading={i === 0 ? "eager" : "lazy"}
+                            decoding="async"
+                            draggable={false}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                // Single image
+                <div className="flex items-center justify-center">
+                  {images[0].srcSet ? (
+                    <img
+                      src={images[0].src}
+                      srcSet={images[0].srcSet}
+                      sizes="(min-width: 1024px) 800px, 100vw"
+                      alt={property.name}
+                      className="max-w-full max-h-[70vh] object-contain"
+                      loading="eager"
+                      decoding="async"
+                      fetchPriority="high"
+                    />
+                  ) : (
+                    <img
+                      src={images[0].src}
+                      alt={property.name}
+                      className="max-w-full max-h-[70vh] object-contain"
+                      loading="eager"
+                      decoding="async"
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Navigation arrows */}
+              {hasMultipleImages && (
+                <>
+                  <button
+                    onClick={scrollPrev}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center transition-opacity ring-1 ring-black/5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-ring opacity-0 group-hover:opacity-100 sm:opacity-100"
+                    aria-label="Edellinen kuva"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={scrollNext}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center transition-opacity ring-1 ring-black/5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-ring opacity-0 group-hover:opacity-100 sm:opacity-100"
+                    aria-label="Seuraava kuva"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </>
+              )}
+
+              {/* Dot indicators */}
+              {hasMultipleImages && (
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-2 bg-black/40 rounded-full px-3 py-1.5 z-10">
                   {images.map((_, i) => (
                     <button
                       key={i}
                       type="button"
-                      onClick={() => setCurrentImageIndex(i)}
+                      onClick={() => scrollTo(i)}
                       className={cn(
                         "w-2 h-2 rounded-full transition-colors",
-                        i === currentImageIndex ? "bg-white" : "bg-white/50"
+                        i === selectedIndex ? "bg-white" : "bg-white/50 hover:bg-white/70"
                       )}
                       aria-label={`Kuva ${i + 1}`}
                     />
                   ))}
+                </div>
+              )}
+
+              {/* Image counter */}
+              {hasMultipleImages && (
+                <div className="absolute top-3 right-3 bg-black/50 text-white text-sm px-2.5 py-1 rounded-full backdrop-blur-sm z-10">
+                  {selectedIndex + 1} / {images.length}
                 </div>
               )}
             </div>

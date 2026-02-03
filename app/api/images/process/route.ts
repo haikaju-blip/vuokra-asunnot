@@ -23,13 +23,14 @@ interface ProcessRequest {
   copyToProperties?: string[]
 }
 
-// Image sizes for responsive delivery (4:3 aspect ratio)
-// ChatGPT recommended optimal sizes for retina + performance
+// Image sizes for responsive delivery
+// Cards use 4:3 aspect ratio for consistent grid layout
+// Full preserves original aspect ratio for detail page
 const SIZES = {
-  thumb: { width: 800, height: 600, quality: 75 },   // Mobile
-  card: { width: 1200, height: 900, quality: 78 },   // Tablet
-  large: { width: 1600, height: 1200, quality: 80 }, // Desktop retina
-  hero: { width: 2400, height: 1800, quality: 82 }   // Property page hero
+  thumb: { width: 800, height: 600, quality: 75, crop: true },   // Mobile cards
+  card: { width: 1200, height: 900, quality: 78, crop: true },   // Tablet cards
+  large: { width: 1600, height: 1200, quality: 80, crop: true }, // Desktop cards
+  hero: { width: 2400, height: null, quality: 82, crop: false }  // Property page - full width, original aspect ratio
 } as const
 
 type SizeName = keyof typeof SIZES
@@ -43,7 +44,6 @@ async function processImage(
   const baseName = String(index).padStart(2, '0')
   const generatedFiles: string[] = []
 
-  // Ei muokata kuvia - vain resize ja WebP-muunnos
   const baseImage = sharp(inputBuffer)
 
   // Generate all size variants as WebP
@@ -51,14 +51,26 @@ async function processImage(
     const outputName = `${baseName}-${sizeName}.webp`
     const outputPath = join(outputDir, outputName)
 
+    const resizeOptions = config.crop
+      ? {
+          // Cards: crop to 4:3 for consistent grid
+          width: config.width,
+          height: config.height as number,
+          fit: 'cover' as const,
+          position: 'center' as const
+        }
+      : {
+          // Hero: preserve aspect ratio, only limit width
+          width: config.width,
+          fit: 'inside' as const,
+          withoutEnlargement: true
+        }
+
     await baseImage
       .clone()
-      .resize(config.width, config.height, {
-        fit: 'cover',
-        position: 'center'
-      })
+      .resize(resizeOptions)
       .webp({
-        quality: 90,  // Korkea laatu
+        quality: 90,
         effort: 4
       })
       .toFile(outputPath)

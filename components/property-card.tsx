@@ -2,15 +2,14 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+import useEmblaCarousel from "embla-carousel-react"
 import { cn } from "@/lib/utils"
 import type { Property } from "@/lib/properties"
 
 interface PropertyCardProps {
   property: Property
 }
-
-const ROTATE_INTERVAL_MS = 3000
 
 // Convert base path to sized image path
 function getImageSrc(basePath: string, size: "thumb" | "card" | "large" | "hero" = "large"): string {
@@ -35,9 +34,9 @@ function buildSrcSet(basePath: string): string | undefined {
 export function PropertyCard({ property }: PropertyCardProps) {
   const isAvailable = property.status === "available"
   const href = `/kohde/${property.id}`
+
   // Gallery contains base paths
   const baseImages = property.gallery?.length ? property.gallery : []
-  const hasProcessedImages = baseImages.length > 0 && !baseImages[0].includes(".")
   const images = baseImages.length
     ? baseImages.map(base => ({
         src: getImageSrc(base, "large"),
@@ -45,68 +44,157 @@ export function PropertyCard({ property }: PropertyCardProps) {
         base
       }))
     : [{ src: property.image || "/placeholder.svg", srcSet: undefined, base: "" }]
-  const [currentIndex, setCurrentIndex] = useState(0)
-  const hasRotation = images.length > 1
+
+  const hasMultipleImages = images.length > 1
+
+  // Embla carousel
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    loop: true,
+    dragFree: false,
+  })
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [isHovered, setIsHovered] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+
+  const scrollPrev = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    emblaApi?.scrollPrev()
+  }, [emblaApi])
+
+  const scrollNext = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    emblaApi?.scrollNext()
+  }, [emblaApi])
+
+  const scrollTo = useCallback((index: number, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    emblaApi?.scrollTo(index)
+  }, [emblaApi])
 
   useEffect(() => {
-    if (!hasRotation) return
-    const t = setInterval(() => {
-      setCurrentIndex((i) => (i + 1) % images.length)
-    }, ROTATE_INTERVAL_MS)
-    return () => clearInterval(t)
-  }, [hasRotation, images.length])
+    if (!emblaApi) return
+
+    const onSelect = () => {
+      setSelectedIndex(emblaApi.selectedScrollSnap())
+    }
+
+    const onPointerDown = () => {
+      setIsDragging(false)
+    }
+
+    const onScroll = () => {
+      // If scrolling, we're dragging
+      setIsDragging(true)
+    }
+
+    const onSettle = () => {
+      // Reset after scroll settles
+      setTimeout(() => setIsDragging(false), 100)
+    }
+
+    emblaApi.on("select", onSelect)
+    emblaApi.on("pointerDown", onPointerDown)
+    emblaApi.on("scroll", onScroll)
+    emblaApi.on("settle", onSettle)
+    onSelect()
+
+    return () => {
+      emblaApi.off("select", onSelect)
+      emblaApi.off("pointerDown", onPointerDown)
+      emblaApi.off("scroll", onScroll)
+      emblaApi.off("settle", onSettle)
+    }
+  }, [emblaApi])
+
+  // Prevent navigation when dragging/swiping
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    if (isDragging) {
+      e.preventDefault()
+    }
+  }, [isDragging])
 
   return (
     <Link
       href={href}
       aria-label={`Katso kohde: ${property.name}`}
+      onClick={handleClick}
       className="block rounded-[16px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <article className="group bg-card rounded-[16px] overflow-hidden border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)] transition duration-300 hover:shadow-[0_8px_20px_rgba(16,24,40,0.10)]">
+      <article
+        className="group bg-card rounded-[16px] overflow-hidden border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)] transition duration-300 hover:shadow-[0_8px_20px_rgba(16,24,40,0.10)]"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          {images.map((img, i) => (
-            img.srcSet ? (
-              // Use native img with srcSet for pre-generated responsive images
+          {hasMultipleImages ? (
+            // Swipeable carousel for multiple images
+            <div className="overflow-hidden h-full" ref={emblaRef}>
+              <div className="flex h-full">
+                {images.map((img, i) => (
+                  <div key={img.src} className="flex-none w-full h-full min-w-0">
+                    {img.srcSet ? (
+                      <img
+                        src={img.src}
+                        srcSet={img.srcSet}
+                        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                        alt={`${property.name} ${i + 1}/${images.length}`}
+                        className="w-full h-full object-cover"
+                        loading={i === 0 ? "eager" : "lazy"}
+                        decoding="async"
+                        draggable={false}
+                      />
+                    ) : (
+                      <Image
+                        src={img.src}
+                        alt={`${property.name} ${i + 1}/${images.length}`}
+                        fill
+                        className="object-cover"
+                        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                        draggable={false}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            // Single image - no carousel needed
+            images[0].srcSet ? (
               <img
-                key={img.src}
-                src={img.src}
-                srcSet={img.srcSet}
+                src={images[0].src}
+                srcSet={images[0].srcSet}
                 sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-                alt={`${property.name} ${i + 1}/${images.length}`}
-                className={cn(
-                  "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
-                  i === currentIndex ? "opacity-100 z-0" : "opacity-0 z-0"
-                )}
-                loading={i === 0 ? "eager" : "lazy"}
+                alt={property.name}
+                className="w-full h-full object-cover"
+                loading="eager"
                 decoding="async"
               />
             ) : (
-              // Fallback to Next/Image for non-processed images
               <Image
-                key={img.src}
-                src={img.src}
-                alt={`${property.name} ${i + 1}/${images.length}`}
+                src={images[0].src}
+                alt={property.name}
                 fill
-                className={cn(
-                  "object-cover transition-opacity duration-500",
-                  i === currentIndex ? "opacity-100 z-0" : "opacity-0 z-0"
-                )}
+                className="object-cover"
                 sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
               />
             )
-          ))}
-          <div className="absolute top-3 left-3">
+          )}
+
+          {/* Status badge */}
+          <div className="absolute top-3 left-3 z-10">
             <span
-              className={cn(
-                "inline-flex items-center px-3 py-1.5 rounded-[10px] text-sm font-medium backdrop-blur-md ring-1 ring-black/5",
-                isAvailable ? "bg-primary text-primary-foreground" : "bg-white/85 text-foreground"
-              )}
+              className="inline-flex items-center px-3 py-1.5 rounded-[10px] text-sm font-medium backdrop-blur-md ring-1 ring-black/5 bg-primary text-primary-foreground"
             >
               {isAvailable ? "Vapaa" : `Vapaa ${property.availableDate}`}
             </span>
           </div>
+
+          {/* 3D badge */}
           {property.matterportUrl && (
-            <div className="absolute top-3 right-3">
+            <div className="absolute top-3 right-3 z-10">
               <span
                 className="inline-flex items-center justify-center w-10 h-10 rounded-full text-xs font-bold bg-white/90 text-foreground backdrop-blur-md ring-1 ring-black/5"
                 aria-label="3D-kierros saatavilla"
@@ -115,21 +203,61 @@ export function PropertyCard({ property }: PropertyCardProps) {
               </span>
             </div>
           )}
-          {hasRotation && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+
+          {/* Navigation arrows - desktop only, on hover */}
+          {hasMultipleImages && (
+            <>
+              <button
+                onClick={scrollPrev}
+                className={cn(
+                  "absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center transition-opacity ring-1 ring-black/5",
+                  "hover:bg-white focus:outline-none focus:ring-2 focus:ring-ring",
+                  isHovered ? "opacity-100" : "opacity-0",
+                  "hidden sm:flex"
+                )}
+                aria-label="Edellinen kuva"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <button
+                onClick={scrollNext}
+                className={cn(
+                  "absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center transition-opacity ring-1 ring-black/5",
+                  "hover:bg-white focus:outline-none focus:ring-2 focus:ring-ring",
+                  isHovered ? "opacity-100" : "opacity-0",
+                  "hidden sm:flex"
+                )}
+                aria-label="Seuraava kuva"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </>
+          )}
+
+          {/* Dot indicators */}
+          {hasMultipleImages && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
               {images.map((_, i) => (
-                <span
+                <button
                   key={i}
+                  onClick={(e) => scrollTo(i, e)}
                   className={cn(
-                    "w-1.5 h-1.5 rounded-full transition-colors",
-                    i === currentIndex ? "bg-primary-foreground" : "bg-white/60"
+                    "w-2 h-2 rounded-full transition-all focus:outline-none",
+                    i === selectedIndex
+                      ? "bg-white scale-110"
+                      : "bg-white/50 hover:bg-white/70"
                   )}
-                  aria-hidden
+                  aria-label={`Kuva ${i + 1}`}
                 />
               ))}
             </div>
           )}
         </div>
+
         <div className="p-5 space-y-3">
           <div className="space-y-1">
             <h3 className="text-lg font-semibold text-card-foreground leading-tight text-balance">
