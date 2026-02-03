@@ -12,6 +12,7 @@ export interface Property {
   price: number
   status: "available" | "upcoming"
   availableDate?: string
+  neighborhood?: string
   matterportUrl?: string
   gallery?: string[]
   public?: boolean
@@ -40,6 +41,7 @@ export interface RawProperty {
   contract_status: string
   status: string
   available_date?: string | null
+  neighborhood?: string | null
   matterport: string | null
   images: string[]
   public: boolean

@@ -28,6 +28,7 @@ interface RawProperty {
   highlights: string[] | null
   description: string | null
   available_date: string | null
+  neighborhood: string | null
 }
 
 interface AdminProperty {
@@ -76,6 +77,7 @@ export default function PropertyEditPage() {
   const [balcony, setBalcony] = useState<boolean | null>(null)
   const [matterport, setMatterport] = useState("")
   const [availableDate, setAvailableDate] = useState("")
+  const [neighborhood, setNeighborhood] = useState("")
   const [highlights, setHighlights] = useState<string[]>([])
   const [description, setDescription] = useState("")
   const [notes, setNotes] = useState("")
@@ -115,6 +117,7 @@ export default function PropertyEditPage() {
         setBalcony(data.balcony)
         setMatterport(data.matterport || "")
         setAvailableDate(data.available_date || "")
+        setNeighborhood(data.neighborhood || "")
         setHighlights(data.highlights || [])
         setDescription(data.description || "")
         setNotes(data.notes || "")
@@ -130,6 +133,7 @@ export default function PropertyEditPage() {
           balcony: data.balcony,
           matterport: data.matterport || "",
           availableDate: data.available_date || "",
+          neighborhood: data.neighborhood || "",
           highlights: data.highlights || [],
           description: data.description || "",
           notes: data.notes || ""
@@ -146,12 +150,12 @@ export default function PropertyEditPage() {
 
     const currentValues = {
       status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt,
-      balcony, matterport, availableDate, highlights, description, notes
+      balcony, matterport, availableDate, neighborhood, highlights, description, notes
     }
 
     const dirty = JSON.stringify(currentValues) !== JSON.stringify(originalValues)
     setIsDirty(dirty)
-  }, [status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, highlights, description, notes, originalValues])
+  }, [status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, neighborhood, highlights, description, notes, originalValues])
 
   // Save handler
   const handleSave = useCallback(async () => {
@@ -172,6 +176,7 @@ export default function PropertyEditPage() {
       balcony,
       matterport: matterport || null,
       available_date: availableDate || null,
+      neighborhood: neighborhood || null,
       highlights: highlights.length > 0 ? highlights : null,
       description: description || null,
       notes: notes || null
@@ -188,7 +193,7 @@ export default function PropertyEditPage() {
         setSaveState("saved")
         setOriginalValues({
           status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt,
-          balcony, matterport, availableDate, highlights, description, notes
+          balcony, matterport, availableDate, neighborhood, highlights, description, notes
         })
         setIsDirty(false)
         setTimeout(() => setSaveState("idle"), 2000)
@@ -202,7 +207,7 @@ export default function PropertyEditPage() {
     }
 
     setSaving(false)
-  }, [isDirty, saving, status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, highlights, description, notes, propertyId])
+  }, [isDirty, saving, status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, neighborhood, highlights, description, notes, propertyId])
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -439,6 +444,17 @@ export default function PropertyEditPage() {
                   value={availableDate}
                   onChange={(e) => setAvailableDate(e.target.value)}
                   className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div className="col-span-2 sm:col-span-4">
+                <label className="block text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Alue</label>
+                <input
+                  type="text"
+                  value={neighborhood}
+                  onChange={(e) => setNeighborhood(e.target.value)}
+                  className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="esim. Keskusta, Niittykumpu"
                 />
               </div>
             </div>

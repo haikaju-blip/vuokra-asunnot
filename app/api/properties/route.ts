@@ -78,9 +78,11 @@ function transformProperty(raw: RawProperty): Property {
     price: raw.rent || 0,
     status,
     availableDate,
+    neighborhood: raw.neighborhood || undefined,
     matterportUrl,
     gallery: gallery.length ? gallery : undefined,
     public: raw.public,
+    highlights: raw.highlights || undefined,
   }
 }
 

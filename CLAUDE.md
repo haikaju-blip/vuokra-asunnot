@@ -10,7 +10,7 @@
 
 ## Rooli
 
-OLET PROJEKTIN UI-TOTEUTTAJA. Tavoite: erittäin tyylikäs, rauhallinen "Blueground"-henkinen ilme ja Airbnb-tyyliset kohdekortit. Tämä on esittelyportaali, jossa EI ole tarvetta varsinaisille hauille: vain alueet + välilehdet "Vapaat / Vapautuvat" + ruudukko.
+OLET PROJEKTIN UI-TOTEUTTAJA. Tavoite: erittäin tyylikäs, rauhallinen "Blueground"-henkinen ilme ja Airbnb-tyyliset kohdekortit. Tämä on esittelyportaali, jossa EI ole tarvetta varsinaisille hauille: vain alueet (6 kaupunkia) + ruudukko.
 
 ---
 
@@ -56,7 +56,7 @@ OLET PROJEKTIN UI-TOTEUTTAJA. Tavoite: erittäin tyylikäs, rauhallinen "Bluegro
 ### 7) Interaktio
 - Koko kortti on klikattava (Next Link), näppäimistöfokus näkyy selkeästi (ring)
 - **Ei sisäkkäisiä linkkejä**
-- "Katso kohde →" saa näkyä, mutta sen ei tule olla erillinen linkki kortin sisällä
+- Kortti vie suoraan kohdesivulle ilman erillistä CTA-nappia
 
 ### 8) Saavutettavuus
 - Fokuskehys aina näkyvä
@@ -74,7 +74,7 @@ OLET PROJEKTIN UI-TOTEUTTAJA. Tavoite: erittäin tyylikäs, rauhallinen "Bluegro
 │ Ingressi: "Valitse alue ja katso..."            │
 ├─────────────────────────────────────────────────┤
 │ FilterBar:                                      │
-│ [Kaikki] [Oulu] [Vantaa] ...  │ [Vapaat][Vapautuvat] │ X Vapaita / Y Vapautumassa │
+│ [Espoo] [Helsinki] [Kirkkonummi] [Klaukkala] [Oulu] [Vantaa] │
 ├─────────────────────────────────────────────────┤
 │ PropertyGrid: 4 saraketta desktop, 2 tablet, 1 mobile │
 │ ┌────┐ ┌────┐ ┌────┐ ┌────┐                     │
@@ -90,13 +90,14 @@ OLET PROJEKTIN UI-TOTEUTTAJA. Tavoite: erittäin tyylikäs, rauhallinen "Bluegro
 
 ## PropertyCard sisältö
 
-1. Pääkuva (aspect-[4/3])
-2. Status-badge kuvan päällä (Vapaa / Vapautuu X.X.XXXX)
-3. 3D-kierros badge (jos matterportUrl)
+1. Pääkuva (aspect-[4/3]) - automaattinen rotaatio
+2. Status-badge vasemmassa yläkulmassa (Vapaa / Vapaa X.X.XX)
+3. 3D-badge oikeassa yläkulmassa (pyöreä "3D" jos matterportUrl)
 4. Otsikko (nimi)
-5. Sijainti/alue
-6. Metarivi: `m² · huoneet · €/kk`
-7. "Katso kohde →" CTA (ei erillinen linkki)
+5. Sijainti: alue, kaupunki (neighborhood + city)
+6. Metarivi: `€/kk · m² · huoneet`
+7. Highlights-pillerit (max 4 kpl)
+8. Koko kortti on klikattava linkki
 
 ---
 

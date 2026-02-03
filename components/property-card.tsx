@@ -136,7 +136,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
               {property.name}
             </h3>
             <p className="text-[13px] text-muted-foreground">
-              {property.location}
+              {property.neighborhood ? `${property.neighborhood}, ${property.location}` : property.location}
             </p>
           </div>
           <p className="text-[13px] text-muted-foreground">
@@ -169,6 +169,23 @@ export function PropertyCard({ property }: PropertyCardProps) {
               }, [])
             })()}
           </p>
+          {property.highlights && property.highlights.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {property.highlights.slice(0, 4).map((h, i) => (
+                <span
+                  key={i}
+                  className="px-2 py-0.5 rounded-[6px] bg-secondary text-[11px] text-muted-foreground"
+                >
+                  {h}
+                </span>
+              ))}
+              {property.highlights.length > 4 && (
+                <span className="px-2 py-0.5 text-[11px] text-muted-foreground">
+                  +{property.highlights.length - 4}
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </article>
     </Link>

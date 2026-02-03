@@ -74,7 +74,6 @@ export default function PropertiesPage() {
             <FilterBar
               selectedArea={selectedArea}
               onAreaChange={handleAreaChange}
-              totalCount={filteredProperties.length}
               activeAreas={activeAreas}
             />
 
