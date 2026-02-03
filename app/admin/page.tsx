@@ -69,10 +69,22 @@ export default function AdminDashboard() {
             <h1 className="text-xl font-semibold">Kohteiden hallinta</h1>
             <div className="flex items-center gap-4">
               <Link
+                href="/admin/tenants"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Vuokralaiset
+              </Link>
+              <Link
+                href="/admin/contracts"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Sopimukset
+              </Link>
+              <Link
                 href="/admin/images/1"
                 className="text-sm text-muted-foreground hover:text-foreground"
               >
-                Kuvien hallinta
+                Kuvat
               </Link>
               <Link
                 href="/"

@@ -153,6 +153,8 @@ Data ladataan runtime API:sta, joten muutokset `properties.json`-tiedostoon näk
 | Admin | http://100.119.209.125:3000/admin |
 | Kohteen muokkaus | http://100.119.209.125:3000/admin/properties/[id] |
 | Kuvien hallinta | http://100.119.209.125:3000/admin/images/[db_id] |
+| **Vuokralaiset** | http://100.119.209.125:3000/admin/tenants |
+| **Sopimukset** | http://100.119.209.125:3000/admin/contracts |
 
 ### Admin API
 
@@ -160,7 +162,51 @@ Data ladataan runtime API:sta, joten muutokset `properties.json`-tiedostoon näk
 GET  /api/admin/properties        # Kaikki kohteet (myös piilotetut)
 GET  /api/admin/properties/[id]   # Yksittäinen kohde
 PUT  /api/admin/properties/[id]   # Päivitä kohde
+POST /api/contracts/[id]/generate # Generoi DOCX/PDF sopimus
+GET  /api/contracts/[id]/download # Lataa sopimustiedosto (?type=docx|pdf)
 ```
+
+---
+
+## Sopimushallinta
+
+### Tietokantakerros (Drizzle ORM)
+
+```
+lib/db/
+├── index.ts    # Tietokantayhteys (better-sqlite3)
+└── schema.ts   # Drizzle schema (landlords, tenants, properties, contracts)
+```
+
+### Server Actions
+
+```
+app/admin/tenants/actions.ts     # Vuokralaisten CRUD
+app/admin/contracts/actions.ts   # Sopimusten CRUD
+```
+
+### Dokumenttien generointi
+
+```
+lib/contracts/generate.ts        # docxtemplater + LibreOffice PDF
+templates/sopimuspohja_template.docx   # Placeholder-pohja ({property_address} jne.)
+archive/                         # Generoidut sopimustiedostot
+```
+
+**Käyttö:**
+1. Luo sopimus `/admin/contracts/new`
+2. Avaa sopimus ja siirry "Dokumentit"-välilehdelle
+3. Klikkaa "Generoi dokumentit"
+4. Lataa DOCX tai PDF
+
+### Tietokannan taulut
+
+| Taulu | Rivejä | Kuvaus |
+|-------|--------|--------|
+| landlords | 3 | Vuokranantajat (Tarja, Jukka, Fiquan) |
+| tenants | 305 | Vuokralaiset |
+| properties | 75 | Kohteet |
+| contracts | 457 | Sopimukset |
 
 ### Kohteen muokkaussivu
 
@@ -232,11 +278,14 @@ Uudistettu kohdesivu sisältää:
 │   │   │   ├── layout.tsx        # Admin layout + sidebar
 │   │   │   ├── login/page.tsx    # Kirjautuminen
 │   │   │   ├── properties/[id]/  # Kohteen muokkaus
-│   │   │   └── images/[id]/      # Kuvien hallinta
+│   │   │   ├── images/[id]/      # Kuvien hallinta
+│   │   │   ├── tenants/          # Vuokralaisten hallinta (UUSI)
+│   │   │   └── contracts/        # Sopimusten hallinta (UUSI)
 │   │   └── api/
 │   │       ├── properties/       # Julkinen API
 │   │       ├── admin/properties/ # Admin API (GET/PUT)
 │   │       ├── auth/             # NextAuth
+│   │       ├── contracts/[id]/   # Sopimus-API (UUSI)
 │   │       └── images/raw/       # Raakakuvat dropzonesta
 │   ├── components/
 │   │   ├── admin-sidebar.tsx     # Admin sivupalkki
@@ -250,8 +299,16 @@ Uudistettu kohdesivu sisältää:
 │   ├── lib/
 │   │   ├── properties.ts         # Tyypit ja fetch-funktiot
 │   │   ├── auth.ts               # NextAuth config
-│   │   └── utils.ts              # cn() helper
+│   │   ├── utils.ts              # cn() helper
+│   │   ├── db/                   # Tietokantakerros (UUSI)
+│   │   │   ├── index.ts          # better-sqlite3 yhteys
+│   │   │   └── schema.ts         # Drizzle ORM schema
+│   │   └── contracts/            # Sopimus-logiikka (UUSI)
+│   │       └── generate.ts       # docxtemplater + PDF
 │   └── middleware.ts             # Auth + Tailscale-tunnistus
+├── templates/
+│   └── sopimuspohja_template.docx  # Sopimustemplate (UUSI)
+├── archive/                      # Generoidut sopimukset (UUSI)
 ├── data/
 │   ├── vuokra.db                 # SQLite tietokanta
 │   └── properties.json           # Kohteet JSON
