@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import Image from "next/image"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import type { Property } from "@/lib/properties"
@@ -112,12 +113,13 @@ export default function PropertyPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="flex items-center gap-3 text-foreground hover:opacity-80">
-              <div className="w-8 h-8 rounded-[8px] bg-primary flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary-foreground">
-                  <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                  <polyline points="9 22 9 12 15 12 15 22" />
-                </svg>
-              </div>
+              <Image
+                src="/logo-v4.png"
+                alt="ELEA asunnot"
+                width={36}
+                height={36}
+                className="rounded-[8px]"
+              />
               <span className="text-lg font-semibold">ELEA asunnot</span>
             </Link>
             <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
