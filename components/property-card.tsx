@@ -1,5 +1,10 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
+import { useCallback, useEffect, useState } from "react"
+import useEmblaCarousel from "embla-carousel-react"
+import { cn } from "@/lib/utils"
 import type { Property } from "@/lib/properties"
 
 interface PropertyCardProps {
@@ -30,41 +35,152 @@ export function PropertyCard({ property }: PropertyCardProps) {
   const isAvailable = property.status === "available"
   const href = `/kohde/${property.id}`
 
-  // Get first image only (carousel is on detail page)
+  // Gallery contains base paths
   const baseImages = property.gallery?.length ? property.gallery : []
-  const firstImage = baseImages.length
-    ? { src: getImageSrc(baseImages[0], "large"), srcSet: buildSrcSet(baseImages[0]) }
-    : { src: property.image || "/placeholder.svg", srcSet: undefined }
+  const images = baseImages.length
+    ? baseImages.map(base => ({
+        src: getImageSrc(base, "large"),
+        srcSet: buildSrcSet(base),
+        base
+      }))
+    : [{ src: property.image || "/placeholder.svg", srcSet: undefined, base: "" }]
 
-  const imageCount = baseImages.length || 1
+  const hasMultipleImages = images.length > 1
+
+  // Embla carousel
+  const [emblaRef, emblaApi] = useEmblaCarousel({
+    loop: true,
+    dragFree: false,
+  })
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const [isHovered, setIsHovered] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+
+  const scrollPrev = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    emblaApi?.scrollPrev()
+  }, [emblaApi])
+
+  const scrollNext = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    emblaApi?.scrollNext()
+  }, [emblaApi])
+
+  const scrollTo = useCallback((index: number, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    emblaApi?.scrollTo(index)
+  }, [emblaApi])
+
+  useEffect(() => {
+    if (!emblaApi) return
+
+    const onSelect = () => {
+      setSelectedIndex(emblaApi.selectedScrollSnap())
+    }
+
+    const onPointerDown = () => {
+      setIsDragging(false)
+    }
+
+    const onScroll = () => {
+      // If scrolling, we're dragging
+      setIsDragging(true)
+    }
+
+    const onSettle = () => {
+      // Reset after scroll settles
+      setTimeout(() => setIsDragging(false), 100)
+    }
+
+    emblaApi.on("select", onSelect)
+    emblaApi.on("pointerDown", onPointerDown)
+    emblaApi.on("scroll", onScroll)
+    emblaApi.on("settle", onSettle)
+    onSelect()
+
+    return () => {
+      emblaApi.off("select", onSelect)
+      emblaApi.off("pointerDown", onPointerDown)
+      emblaApi.off("scroll", onScroll)
+      emblaApi.off("settle", onSettle)
+    }
+  }, [emblaApi])
+
+  // Prevent navigation when dragging/swiping
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    if (isDragging) {
+      e.preventDefault()
+    }
+  }, [isDragging])
 
   return (
     <Link
       href={href}
       aria-label={`Katso kohde: ${property.name}`}
+      onClick={handleClick}
       className="block rounded-[16px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <article className="group bg-card rounded-[16px] overflow-hidden border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)] transition duration-300 hover:shadow-[0_8px_20px_rgba(16,24,40,0.10)]">
+      <article
+        className="group bg-card rounded-[16px] overflow-hidden border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)] transition duration-300 hover:shadow-[0_8px_20px_rgba(16,24,40,0.10)]"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          {/* Single image - no carousel */}
-          {firstImage.srcSet ? (
-            <img
-              src={firstImage.src}
-              srcSet={firstImage.srcSet}
-              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-              alt={property.name}
-              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-              loading="lazy"
-              decoding="async"
-            />
+          {hasMultipleImages ? (
+            // Swipeable carousel for multiple images
+            <div className="overflow-hidden h-full" ref={emblaRef}>
+              <div className="flex h-full">
+                {images.map((img, i) => (
+                  <div key={img.src} className="flex-none w-full h-full min-w-0">
+                    {img.srcSet ? (
+                      <img
+                        src={img.src}
+                        srcSet={img.srcSet}
+                        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                        alt={`${property.name} ${i + 1}/${images.length}`}
+                        className="w-full h-full object-cover"
+                        loading={i === 0 ? "eager" : "lazy"}
+                        decoding="async"
+                        draggable={false}
+                      />
+                    ) : (
+                      <Image
+                        src={img.src}
+                        alt={`${property.name} ${i + 1}/${images.length}`}
+                        fill
+                        className="object-cover"
+                        sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                        draggable={false}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : (
-            <Image
-              src={firstImage.src}
-              alt={property.name}
-              fill
-              className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-            />
+            // Single image - no carousel needed
+            images[0].srcSet ? (
+              <img
+                src={images[0].src}
+                srcSet={images[0].srcSet}
+                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+                alt={property.name}
+                className="w-full h-full object-cover"
+                loading="eager"
+                decoding="async"
+              />
+            ) : (
+              <Image
+                src={images[0].src}
+                alt={property.name}
+                fill
+                className="object-cover"
+                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+              />
+            )
           )}
 
           {/* Status badge */}
@@ -88,22 +204,63 @@ export function PropertyCard({ property }: PropertyCardProps) {
             </div>
           )}
 
-          {/* Image count badge (if multiple images) */}
-          {imageCount > 1 && (
-            <div className="absolute bottom-3 right-3 z-10">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-black/50 text-white backdrop-blur-sm">
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          {/* Navigation arrows - desktop only, on hover */}
+          {hasMultipleImages && (
+            <>
+              <button
+                onClick={scrollPrev}
+                className={cn(
+                  "absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center transition-opacity ring-1 ring-black/5",
+                  "hover:bg-white focus:outline-none focus:ring-2 focus:ring-ring",
+                  isHovered ? "opacity-100" : "opacity-0",
+                  "hidden sm:flex"
+                )}
+                aria-label="Edellinen kuva"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
-                {imageCount}
-              </span>
+              </button>
+              <button
+                onClick={scrollNext}
+                className={cn(
+                  "absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center transition-opacity ring-1 ring-black/5",
+                  "hover:bg-white focus:outline-none focus:ring-2 focus:ring-ring",
+                  isHovered ? "opacity-100" : "opacity-0",
+                  "hidden sm:flex"
+                )}
+                aria-label="Seuraava kuva"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </>
+          )}
+
+          {/* Dot indicators */}
+          {hasMultipleImages && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={(e) => scrollTo(i, e)}
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-all focus:outline-none",
+                    i === selectedIndex
+                      ? "bg-white scale-110"
+                      : "bg-white/50 hover:bg-white/70"
+                  )}
+                  aria-label={`Kuva ${i + 1}`}
+                />
+              ))}
             </div>
           )}
         </div>
 
-        <div className="p-5 space-y-3 overflow-hidden">
+        <div className="p-5 space-y-3">
           <div className="space-y-1">
-            <h3 className="text-[16px] leading-tight break-words font-serif text-elea-navy">
+            <h3 className="text-lg font-semibold text-card-foreground leading-tight text-balance">
               {property.name}
             </h3>
             <p className="text-[13px] text-muted-foreground">
