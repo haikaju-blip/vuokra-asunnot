@@ -1,28 +1,42 @@
 @import 'tailwindcss';
 
 :root {
-  --background: oklch(0.985 0.002 90);
-  --foreground: oklch(0.2 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0 0);
-  --primary: oklch(0.45 0.12 250);
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.97 0.002 90);
-  --secondary-foreground: oklch(0.25 0 0);
-  --muted: oklch(0.96 0.002 90);
-  --muted-foreground: oklch(0.5 0 0);
-  --accent: oklch(0.45 0.12 250);
-  --accent-foreground: oklch(1 0 0);
-  --border: oklch(0.92 0.002 90);
-  --input: oklch(0.92 0.002 90);
-  --ring: oklch(0.45 0.12 250);
+  /* ELEA Tyyli A - Lämmin/Editorial */
+  --background: #FAF8F5;
+  --foreground: #2D2A26;
+  --card: #FFFFFF;
+  --card-foreground: #2D2A26;
+  --popover: #FFFFFF;
+  --popover-foreground: #2D2A26;
+  --primary: #1B3A5C;
+  --primary-foreground: #FFFFFF;
+  --secondary: #F5EFE3;
+  --secondary-foreground: #2D2A26;
+  --muted: #F3EDE3;
+  --muted-foreground: #6B6560;
+  --accent: #C8A96E;
+  --accent-foreground: #FFFFFF;
+  --border: #E5DFD6;
+  --input: #E5DFD6;
+  --ring: #1B3A5C;
   --radius: 1rem;
+
+  /* ELEA brand colors */
+  --elea-navy: #1B3A5C;
+  --elea-warm: #C8A96E;
+  --elea-warm-light: #D4BC8A;
+  --elea-warm-pale: #F5EFE3;
+  --elea-bg: #FAF8F5;
+  --elea-bg-warm: #F3EDE3;
+  --elea-text: #2D2A26;
+  --elea-text-muted: #6B6560;
+  --elea-text-light: #8A857E;
+  --elea-border: #E5DFD6;
 }
 
 @theme inline {
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-heading), Georgia, serif;
   --font-mono: ui-monospace, monospace;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -40,6 +54,18 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  /* ELEA brand colors for Tailwind */
+  --color-elea-navy: var(--elea-navy);
+  --color-elea-warm: var(--elea-warm);
+  --color-elea-warm-light: var(--elea-warm-light);
+  --color-elea-warm-pale: var(--elea-warm-pale);
+  --color-elea-bg: var(--elea-bg);
+  --color-elea-bg-warm: var(--elea-bg-warm);
+  --color-elea-text: var(--elea-text);
+  --color-elea-text-muted: var(--elea-text-muted);
+  --color-elea-text-light: var(--elea-text-light);
+  --color-elea-border: var(--elea-border);
 }
 
 @layer base {

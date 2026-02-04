@@ -18,6 +18,7 @@ const dmSans = DM_Sans({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://asunnot.elea.fi"),
   title: "ELEA asunnot – Löydä unelmiesi koti",
   description: "Selaa vapaita ja pian vapautuvia ELEA-asuntoja. Selkeä tie kotiin.",
   icons: {
@@ -27,6 +28,11 @@ export const metadata: Metadata = {
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
     ],
     apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    type: "website",
+    locale: "fi_FI",
+    siteName: "ELEA asunnot",
   },
 }
 
