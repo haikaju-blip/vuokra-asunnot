@@ -8,18 +8,26 @@ export default function PropertiesPage() {
   return (
     <div className="min-h-screen bg-elea-bg">
       {/* Header */}
-      <header className="bg-card border-b border-elea-border">
+      <header style={{ background: '#FFFFFF', borderBottom: '1px solid #E5DFD6' }}>
         <div className="max-w-[1200px] mx-auto px-6">
-          <div className="flex h-16 items-center">
-            <a href="/" className="flex items-center gap-3">
-              <span className="text-[24px] tracking-[1.5px] font-serif text-elea-navy">
-                ELEA<span className="text-elea-warm">.</span>
-              </span>
-              <span className="hidden sm:block h-5 w-px bg-elea-border" />
-              <span className="hidden sm:block text-[12px] text-elea-text-light">
-                tie kotiisi
+          <div className="flex h-16 items-center justify-between">
+            {/* Logo — sisennetty linjaan filtteripainikkeen tekstin kanssa */}
+            <a href="/" className="flex items-baseline" style={{ marginLeft: 31 }}>
+              <span
+                className="font-serif"
+                style={{ fontSize: 26, color: '#1B3A5C', letterSpacing: '-0.3px' }}
+              >
+                ELEA<span style={{ color: '#C8A96E' }}>.</span>
               </span>
             </a>
+            {/* Tilastorivi — piilossa mobiilissa */}
+            <div className="hidden sm:flex items-center gap-1.5" style={{ fontSize: 13, color: '#8A857E' }}>
+              <span>~100 asuntoa</span>
+              <span className="w-px h-3.5 mx-1.5" style={{ background: '#E5DFD6' }} />
+              <span>6 paikkakuntaa</span>
+              <span className="w-px h-3.5 mx-1.5" style={{ background: '#E5DFD6' }} />
+              <span>vuodesta 1988</span>
+            </div>
           </div>
         </div>
       </header>
@@ -32,24 +40,6 @@ export default function PropertiesPage() {
       {/* ═══ MEISTÄ — Yksi valkoinen blokki ═══ */}
       <section className="bg-white border-t border-b border-elea-border">
         <div className="max-w-[1200px] mx-auto" style={{ padding: '52px 24px' }}>
-
-          {/* Tilastorivi */}
-          <div className="flex" style={{ marginBottom: 44, paddingBottom: 36, borderBottom: '1px solid #E5DFD6' }}>
-            <div className="text-center relative" style={{ padding: '0 28px 0 0' }}>
-              <div className="font-serif text-elea-navy" style={{ fontSize: 34, lineHeight: 1.1 }}>~100</div>
-              <div className="text-elea-text-light" style={{ fontSize: 12, fontWeight: 500, marginTop: 4 }}>asuntoa</div>
-              <div className="absolute top-1/2 -translate-y-1/2 bg-elea-border" style={{ right: 0, width: 1, height: 40 }} />
-            </div>
-            <div className="text-center relative" style={{ padding: '0 28px' }}>
-              <div className="font-serif text-elea-navy" style={{ fontSize: 34, lineHeight: 1.1 }}>6</div>
-              <div className="text-elea-text-light" style={{ fontSize: 12, fontWeight: 500, marginTop: 4 }}>paikkakuntaa</div>
-              <div className="absolute top-1/2 -translate-y-1/2 bg-elea-border" style={{ right: 0, width: 1, height: 40 }} />
-            </div>
-            <div className="text-center" style={{ padding: '0 0 0 28px' }}>
-              <div className="font-serif text-elea-navy" style={{ fontSize: 34, lineHeight: 1.1 }}>1988</div>
-              <div className="text-elea-text-light" style={{ fontSize: 12, fontWeight: 500, marginTop: 4 }}>vuodesta lähtien</div>
-            </div>
-          </div>
 
           {/* Kaksi palstaa */}
           <div className="grid grid-cols-1 md:grid-cols-2 items-start" style={{ gap: 64 }}>

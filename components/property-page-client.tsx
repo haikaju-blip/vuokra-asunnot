@@ -75,21 +75,21 @@ export function PropertyPageClient({ property }: PropertyPageClientProps) {
   return (
     <div className="min-h-screen pb-24 lg:pb-0 bg-elea-bg">
       {/* Header */}
-      <header className="bg-card border-b border-elea-border">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <header style={{ background: '#FFFFFF', borderBottom: '1px solid #E5DFD6' }}>
+        <div className="max-w-[1200px] mx-auto px-6">
           <div className="flex h-16 items-center justify-between">
-            <Link href="/" className="flex items-center gap-3">
-              <span className="text-[24px] tracking-[1.5px] font-serif text-elea-navy">
-                ELEA<span className="text-elea-warm">.</span>
-              </span>
-              <span className="hidden sm:block h-5 w-px bg-elea-border" />
-              <span className="hidden sm:block text-[12px] text-elea-text-light">
-                tie kotiisi
+            <Link href="/" className="flex items-baseline" style={{ marginLeft: 31 }}>
+              <span
+                className="font-serif"
+                style={{ fontSize: 26, color: '#1B3A5C', letterSpacing: '-0.3px' }}
+              >
+                ELEA<span style={{ color: '#C8A96E' }}>.</span>
               </span>
             </Link>
             <Link
               href="/"
-              className="text-[15px] hover:opacity-70 transition-opacity text-elea-text-muted"
+              className="hover:opacity-70 transition-opacity"
+              style={{ fontSize: 15, color: '#6B6560' }}
             >
               ← Takaisin
             </Link>
@@ -97,7 +97,7 @@ export function PropertyPageClient({ property }: PropertyPageClientProps) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-[1200px] mx-auto px-6 py-8">
         {/* Hero Section */}
         <div className="space-y-6 mb-8">
           {/* Title & Location */}

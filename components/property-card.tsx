@@ -31,6 +31,11 @@ function buildSrcSet(basePath: string): string | undefined {
   ].join(", ")
 }
 
+// Strip apartment number from address (e.g., "Niittyportti 2 A13" → "Niittyportti 2")
+function getStreetName(fullName: string): string {
+  return fullName.replace(/\s+[A-Z]\s*\d+.*$/, "").trim()
+}
+
 export function PropertyCard({ property }: PropertyCardProps) {
   const isAvailable = property.status === "available"
   const href = `/kohde/${property.id}`
@@ -261,7 +266,7 @@ export function PropertyCard({ property }: PropertyCardProps) {
         <div className="p-5 space-y-3">
           <div className="space-y-1">
             <h3 className="text-lg font-semibold text-card-foreground leading-tight text-balance">
-              {property.name}
+              {getStreetName(property.name)}
             </h3>
             <p className="text-[13px] text-muted-foreground">
               {property.neighborhood ? `${property.neighborhood}, ${property.location}` : property.location}
@@ -297,9 +302,9 @@ export function PropertyCard({ property }: PropertyCardProps) {
               }, [])
             })()}
           </p>
-          {property.highlights && property.highlights.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {property.highlights.slice(0, 4).map((h, i) => (
+          {property.highlights && property.highlights.length > 0 ? (
+            <div className="flex flex-wrap gap-1 h-[52px] overflow-hidden">
+              {property.highlights.slice(0, 6).map((h, i) => (
                 <span
                   key={i}
                   className="px-2 py-0.5 rounded-[6px] bg-secondary text-[11px] text-muted-foreground"
@@ -307,12 +312,14 @@ export function PropertyCard({ property }: PropertyCardProps) {
                   {h}
                 </span>
               ))}
-              {property.highlights.length > 4 && (
+              {property.highlights.length > 6 && (
                 <span className="px-2 py-0.5 text-[11px] text-muted-foreground">
-                  +{property.highlights.length - 4}
+                  +{property.highlights.length - 6}
                 </span>
               )}
             </div>
+          ) : (
+            <div className="h-[52px]" />
           )}
         </div>
       </article>
