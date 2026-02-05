@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react"
 import useEmblaCarousel from "embla-carousel-react"
 import { cn } from "@/lib/utils"
 import type { Property } from "@/lib/properties"
+import { MatterportModal } from "./matterport-modal"
 
 interface PropertyCardProps {
   property: Property
@@ -61,6 +62,7 @@ export function PropertyCard({ property, onContactClick }: PropertyCardProps) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
   const [isDragging, setIsDragging] = useState(false)
+  const [matterportOpen, setMatterportOpen] = useState(false)
 
   const scrollPrev = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
@@ -123,6 +125,7 @@ export function PropertyCard({ property, onContactClick }: PropertyCardProps) {
   }, [isDragging])
 
   return (
+    <>
     <Link
       href={href}
       aria-label={`Katso kohde: ${property.name}`}
@@ -198,19 +201,20 @@ export function PropertyCard({ property, onContactClick }: PropertyCardProps) {
             </span>
           </div>
 
-          {/* 3D badge - kultainen glow ring, avaa Matterportin */}
+          {/* 3D badge - kultainen glow ring, avaa Matterport-modalin */}
           {property.matterportUrl && (
             <div className="absolute top-3 right-3 z-10">
-              <a
-                href={property.matterportUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
+              <button
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setMatterportOpen(true)
+                }}
                 className="badge-3d w-9 h-9 rounded-full bg-elea-warm flex items-center justify-center text-[11px] font-bold text-white transition-transform duration-150 hover:scale-110 focus-visible:outline-2 focus-visible:outline-elea-warm focus-visible:outline-offset-2"
                 aria-label={`Avaa 3D-kierros: ${property.name}`}
               >
                 3D
-              </a>
+              </button>
             </div>
           )}
 
@@ -355,5 +359,17 @@ export function PropertyCard({ property, onContactClick }: PropertyCardProps) {
         </div>
       </article>
     </Link>
+
+    {/* Matterport Modal */}
+    <MatterportModal
+      property={property}
+      isOpen={matterportOpen}
+      onClose={() => setMatterportOpen(false)}
+      onContact={() => {
+        setMatterportOpen(false)
+        onContactClick?.(property)
+      }}
+    />
+  </>
   )
 }
