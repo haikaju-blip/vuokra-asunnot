@@ -25,7 +25,7 @@ export function DevSidebar() {
   if (!isDev) return null
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-48 bg-black/90 text-white p-4 z-50 overflow-y-auto">
+    <aside className="fixed right-0 top-0 h-screen w-48 bg-black/90 text-white p-4 z-50 overflow-y-auto">
       <div className="text-xs font-bold text-yellow-400 mb-3">DEV MENU</div>
       <nav className="space-y-1">
         {DEV_LINKS.map((link, i) =>

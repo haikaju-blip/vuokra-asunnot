@@ -18,7 +18,7 @@ Sivusto käyttää **server-side renderöintiä** SEO:n optimoimiseksi:
 
 | Sivu | Tyyppi | Kuvaus |
 |------|--------|--------|
-| `/` | Static (○) | Etusivu, pre-renderöity buildissa |
+| `/` | Dynamic (ƒ) | Etusivu, force-dynamic (reaaliaikaiset muutokset) |
 | `/kohde/[id]` | SSG (●) | Kohdesivut, generateStaticParams |
 | `/admin/*` | Dynamic (ƒ) | Admin-sivut |
 
@@ -32,10 +32,11 @@ Sivusto käyttää **server-side renderöintiä** SEO:n optimoimiseksi:
 
 ```
 page.tsx (server)
-└── PropertyListClient (client) - filtteröinti, load more
+└── PropertyListClient (client) - filtteröinti, load more, yhteydenotto-modal
     ├── FilterBar (client)
-    └── PropertyGrid (server)
-        └── PropertyCard (server) - ei karusellia, vain pääkuva
+    ├── PropertyGrid
+    │   └── PropertyCard - karuselli, "Ota yhteyttä" CTA-painike
+    └── ContactModal (client) - yhteydenottolomake
 
 kohde/[id]/page.tsx (server) + generateMetadata
 └── PropertyPageClient (client) - galleria, Matterport
@@ -104,18 +105,40 @@ Tekstilogo DM Serif Display -fontilla:
 
 ### PropertyCard
 
-Yksinkertaistettu kortti **ilman karusellia** (suorituskykyoptimointia varten):
+Asuntokortti etusivulla:
 
-- Näyttää vain pääkuvan
-- Kuvamäärä-badge oikeassa alakulmassa jos useita kuvia
-- Karuselli on vain kohdesivulla
+- Embla-karuselli kuvagallerialle (swipe + nuolet)
+- "Ota yhteyttä" CTA-painike otsikon vieressä (ghost-tyyli)
+- Status-badge (Vapaa / Vapautuu X.X)
+- 3D-badge jos Matterport
+- Highlights-pillerit (max 5 + "+X")
+- Huonetiedot: kokoonpano (esim. "2h+k") tai "X huonetta"
 
 ```tsx
 // components/property-card.tsx
-export function PropertyCard({ property }: PropertyCardProps) {
-  // Ei useState, ei useEffect, ei Embla
-  // → Voi olla server component
+interface PropertyCardProps {
+  property: Property
+  onContactClick?: (property: Property) => void  // Avaa yhteydenotto-modalin
 }
+```
+
+### ContactModal
+
+Yhteydenottolomake modalina:
+
+- Kohteen tiedot esitäytettynä
+- Pakolliset: nimi, sähköposti, puhelin, muuttoaikataulu, GDPR
+- Vapaaehtoiset: asukkaiden määrä, viesti
+- Validointi + virheilmoitukset
+- Focus trap, ESC sulkee
+
+```tsx
+// components/contact-modal.tsx
+<ContactModal
+  property={property}
+  isOpen={isOpen}
+  onClose={closeModal}
+/>
 ```
 
 ### PropertyListClient
@@ -181,21 +204,71 @@ export async function generateMetadata({ params }): Promise<Metadata> {
 
 ```typescript
 // Server-side funktiot (SSR/SSG)
-getProperties(): Property[]      // Kaikki julkiset
-getProperty(id): Property | null // Yksittäinen
+getProperties(): Property[]      // Kaikki julkiset (master-periytyminen mukana)
+getProperty(id): Property | null // Yksittäinen (master-periytyminen mukana)
 
 // Client-side funktiot (legacy, älä käytä uusilla sivuilla)
 fetchProperties(): Promise<Property[]>
 fetchProperty(id): Promise<Property | null>
+
+// Periytyvät kentät master → slave
+INHERITABLE_FIELDS = ['area_m2', 'rooms', 'room_layout', 'balcony',
+                      'year_built', 'matterport', 'highlights', 'description']
 ```
+
+### Master/Slave -malli
+
+Saman rakennuksen asunnot voivat periä tietoja toisiltaan:
+
+```
+Master (Isokatu 60 A1)
+├── area_m2: 45
+├── rooms: 2
+├── room_layout: "2h+k"
+├── highlights: ["Parveke", "Hissi"]
+└── description: "Valoisa kaksio..."
+
+Slave (Isokatu 60 B3)
+├── master_id: "isokatu-60-a1"  ← Perii masterilta
+├── rent: 750                    ← Oma arvo
+└── floor: 3                     ← Oma arvo
+```
+
+**Admin-sivulla:**
+- "Periytyminen"-osio näyttää master/slave-tilan
+- SLAVE: näyttää masterin, "Irrota masterista" -nappi
+- ITSENÄINEN: lista saman talon kohteista, klikkaa asettaaksesi masteriksi
 
 ### API-reitit
 
 ```
-GET /api/properties        # Julkiset kohteet
-GET /api/properties/[id]   # Yksittäinen kohde
-GET /api/admin/properties  # Admin: kaikki (myös piilotetut)
-PUT /api/admin/properties/[id]  # Admin: päivitys
+GET  /api/properties              # Julkiset kohteet
+GET  /api/properties/[id]         # Yksittäinen kohde
+GET  /api/properties/related/[id] # Saman talon kohteet (master/slave)
+GET  /api/admin/properties        # Admin: kaikki (myös piilotetut)
+PUT  /api/admin/properties/[id]   # Admin: päivitys
+POST /api/contact                 # Yhteydenottolomake
+GET  /api/contact                 # Yhteydenottojen listaus (admin)
+```
+
+### Yhteydenotot
+
+Yhteydenotot tallennetaan tiedostoon `/data/contacts.json`:
+
+```typescript
+interface ContactSubmission {
+  id: string
+  timestamp: string
+  propertyId: string
+  propertyName: string
+  name: string
+  email: string
+  phone: string
+  moveTimeline: "asap" | "1-2months" | "3+months" | "unknown"
+  occupants: string
+  message: string
+  status: "new" | "contacted" | "archived"
+}
 ```
 
 ---
@@ -228,17 +301,22 @@ PUT /api/admin/properties/[id]  # Admin: päivitys
 ```
 apps/esittely/
 ├── app/
-│   ├── page.tsx              # Etusivu (server component)
+│   ├── page.tsx              # Etusivu (dynamic, force-dynamic)
 │   ├── layout.tsx            # Root layout + metadata
 │   ├── globals.css           # Tailwind + ELEA-teema
 │   ├── kohde/[id]/page.tsx   # Kohdesivu (SSG + metadata)
 │   ├── meista/page.tsx
-│   ├── admin/                # Admin-sivut
-│   └── api/                  # API-reitit
+│   ├── admin/
+│   │   └── properties/[id]/page.tsx  # Kohteen muokkaus + master/slave
+│   └── api/
+│       ├── contact/route.ts           # Yhteydenottolomake
+│       ├── properties/related/[id]/   # Saman talon kohteet
+│       └── admin/properties/[id]/     # Admin API
 ├── components/
-│   ├── property-card.tsx     # Kortti (ei karusellia)
+│   ├── property-card.tsx     # Kortti + karuselli + CTA
 │   ├── property-grid.tsx
-│   ├── property-list-client.tsx  # Filtteröinti + load more
+│   ├── property-list-client.tsx  # Filtteröinti + yhteydenotto-modal
+│   ├── contact-modal.tsx     # Yhteydenottolomake (modal)
 │   ├── property-page-client.tsx  # Kohdesivun client-logiikka
 │   ├── filter-bar.tsx
 │   ├── contact-cta-card.tsx
@@ -248,10 +326,12 @@ apps/esittely/
 │   ├── mobile-cta-bar.tsx
 │   └── property-map.tsx      # Leaflet-kartta
 ├── lib/
-│   ├── properties.ts         # Tyypit + getProperties/getProperty
+│   ├── properties.ts         # Tyypit + master/slave periytyminen
 │   ├── utils.ts              # cn() helper
 │   ├── auth.ts               # NextAuth
 │   └── db/                   # Drizzle ORM
+├── docs/
+│   └── YHTEYDENOTTO-SUUNNITELMA.md  # Lomakkeen suunnittelu
 └── middleware.ts             # Auth + Tailscale
 ```
 
@@ -289,6 +369,30 @@ systemctl status vuokra-esittely.service
 ---
 
 ## Muutosloki
+
+### 2026-02-05: Master/Slave + Yhteydenotto
+
+**Master/Slave -malli:**
+- `master_id` kenttä kohteille (lib/properties.ts, API)
+- Periytymislogiikka: slave perii masterin tiedot automaattisesti
+- Admin UI: "Periytyminen"-osio kohteen muokkaussivulla
+- Saman talon kohteiden tunnistus (API: /api/properties/related/[id])
+
+**Yhteydenottolomake:**
+- "Ota yhteyttä" CTA-painike kortteihin (ghost-tyyli)
+- ContactModal-komponentti (validointi, GDPR, focus trap)
+- API: POST /api/contact → tallennus /data/contacts.json
+- Suunnitteludokumentti: docs/YHTEYDENOTTO-SUUNNITELMA.md
+
+**Admin-parannukset:**
+- Preset highlights 10 kategorialla (kaksipalstainen valinta)
+- Kokoonpano-kenttä (room_layout): "2h+k+s"
+- Drag & drop highlightsien järjestämiseen
+- Drag & drop kuvien järjestämiseen
+
+**Muut:**
+- Etusivu dynamic (force-dynamic) → admin-muutokset näkyvät heti
+- Dev-sidebar siirretty oikeaan reunaan
 
 ### 2026-02-04: SSR/SSG refaktorointi
 

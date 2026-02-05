@@ -10,6 +10,7 @@ interface RawProperty {
   area_m2: number | null
   rooms: string | null
   rent: number | null
+  master_id: string | null
 }
 
 // Extract street name and building number from address
@@ -56,14 +57,15 @@ export async function GET(
         return street === targetStreet
       })
       .map(p => ({
-        id: String(p.db_id),
+        id: p.id,
         db_id: p.db_id,
         name: p.id, // Use slug as name
         address: p.address,
         city: p.city,
         size: p.area_m2,
         rooms: p.rooms,
-        rent: p.rent
+        rent: p.rent,
+        master_id: p.master_id || null
       }))
 
     return NextResponse.json({

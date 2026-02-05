@@ -10,7 +10,9 @@ interface RawProperty {
   city: string
   area_m2: number | null
   rooms: number | null
+  room_layout: string | null
   floor: number | null
+  master_id: string | null
   total_floors: number | null
   balcony: boolean | null
   rent: number
@@ -81,9 +83,9 @@ export async function PUT(
 
   // Update only allowed fields
   const allowedFields = [
-    'status', 'public', 'rent', 'area_m2', 'rooms', 'floor', 'total_floors',
+    'status', 'public', 'rent', 'area_m2', 'rooms', 'room_layout', 'floor', 'total_floors',
     'year_built', 'balcony', 'matterport', 'available_date', 'neighborhood',
-    'highlights', 'description', 'notes'
+    'highlights', 'description', 'notes', 'master_id'
   ]
 
   for (const field of allowedFields) {

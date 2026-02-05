@@ -13,6 +13,7 @@ interface RawProperty {
   city: string
   area_m2: number | null
   rooms: number | null
+  room_layout: string | null
   floor: number | null
   total_floors: number | null
   balcony: boolean | null
@@ -29,7 +30,11 @@ interface RawProperty {
   description: string | null
   available_date: string | null
   neighborhood: string | null
+  master_id: string | null
 }
+
+// Fields that inherit from master
+const INHERITABLE_FIELDS = ['area_m2', 'rooms', 'room_layout', 'balcony', 'year_built', 'matterport', 'highlights', 'description']
 
 interface AdminProperty {
   id: string
@@ -40,10 +45,32 @@ interface AdminProperty {
   public: boolean
 }
 
+interface RelatedProperty {
+  id: string
+  db_id: number
+  address: string
+  city: string
+  master_id: string | null
+}
+
 function extractStreetAddress(fullAddress: string): string {
   const parts = fullAddress.split(" ")
   const filtered = parts.filter(p => !/^\d{5}$/.test(p) && !["Oulu", "Vantaa", "Helsinki", "Espoo", "Tampere", "Turku"].includes(p))
   return filtered.join(" ")
+}
+
+// Preset highlights grouped by category
+const PRESET_HIGHLIGHTS: Record<string, string[]> = {
+  "Varustelu": ["Parveke", "Sauna", "Kalustettu", "Hissi", "Lemmikit Ok"],
+  "Keittiö": ["Astianpk", "Induktio", "Jää-pakastink", "Mikro"],
+  "Kylpyhuone": ["Suihkuseinä", "Pesuk", "Pesuk valmius"],
+  "Lattia & sisustus": ["Vinyyli", "Parketti", "Sälekaihtimet", "Verhokiskot"],
+  "Huoneisto": ["Korkeat huoneet", "Loft", "Valoisa", "Vaatehuone"],
+  "Suunta & sijainti": ["Etelä", "Länsi", "Rauhallinen", "Sisäpihalle"],
+  "Kunto": ["Remontoitu", "Kuin uusi"],
+  "Netti": ["1Gbit", "50Mbit", "Netti"],
+  "Taloyhtiö": ["Pesula", "Taloyhtiö sauna", "Autopaikka", "Lämpötolppa"],
+  "Liikenne": ["Metro", "Hyvät julkiset"],
 }
 
 export default function PropertyEditPage() {
@@ -61,6 +88,8 @@ export default function PropertyEditPage() {
   const [showHighlightInput, setShowHighlightInput] = useState(false)
   const [editingHighlightIndex, setEditingHighlightIndex] = useState<number | null>(null)
   const [editingHighlightValue, setEditingHighlightValue] = useState("")
+  const [draggedHighlightIndex, setDraggedHighlightIndex] = useState<number | null>(null)
+  const [dragOverHighlightIndex, setDragOverHighlightIndex] = useState<number | null>(null)
   const highlightInputRef = useRef<HTMLInputElement>(null)
   const editHighlightInputRef = useRef<HTMLInputElement>(null)
   const [rawImages, setRawImages] = useState<{ name: string; path: string }[]>([])
@@ -71,6 +100,7 @@ export default function PropertyEditPage() {
   const [rent, setRent] = useState<number | "">("")
   const [areaM2, setAreaM2] = useState<number | "">("")
   const [rooms, setRooms] = useState<number | "">("")
+  const [roomLayout, setRoomLayout] = useState("")
   const [floor, setFloor] = useState<number | "">("")
   const [totalFloors, setTotalFloors] = useState<number | "">("")
   const [yearBuilt, setYearBuilt] = useState<number | "">("")
@@ -81,6 +111,9 @@ export default function PropertyEditPage() {
   const [highlights, setHighlights] = useState<string[]>([])
   const [description, setDescription] = useState("")
   const [notes, setNotes] = useState("")
+  const [masterId, setMasterId] = useState<string | null>(null)
+  const [masterProperty, setMasterProperty] = useState<RawProperty | null>(null)
+  const [relatedProperties, setRelatedProperties] = useState<RelatedProperty[]>([])
 
   // Original values for dirty check
   const [originalValues, setOriginalValues] = useState<any>(null)
@@ -99,18 +132,38 @@ export default function PropertyEditPage() {
 
     fetch(`/api/admin/properties/${propertyId}`)
       .then((res) => res.json())
-      .then((data: RawProperty) => {
+      .then(async (data: RawProperty) => {
         // Load raw images from dropzone
         fetch(`/api/images/raw/${data.db_id}`)
           .then(res => res.json())
           .then(imgData => setRawImages(imgData.images || []))
           .catch(() => {})
+
+        // Load master property if this is a slave
+        if (data.master_id) {
+          try {
+            const masterRes = await fetch(`/api/admin/properties/${data.master_id}`)
+            const masterData = await masterRes.json()
+            setMasterProperty(masterData)
+          } catch {}
+        } else {
+          setMasterProperty(null)
+        }
+        setMasterId(data.master_id || null)
+
+        // Load related properties (same building)
+        fetch(`/api/properties/related/${data.db_id}`)
+          .then(res => res.json())
+          .then(relData => setRelatedProperties(relData.related || []))
+          .catch(() => setRelatedProperties([]))
+
         setProperty(data)
         setStatus(data.status || "available")
         setIsPublic(data.public || false)
         setRent(data.rent || "")
         setAreaM2(data.area_m2 || "")
         setRooms(data.rooms || "")
+        setRoomLayout(data.room_layout || "")
         setFloor(data.floor || "")
         setTotalFloors(data.total_floors || "")
         setYearBuilt(data.year_built || "")
@@ -127,6 +180,7 @@ export default function PropertyEditPage() {
           rent: data.rent || "",
           areaM2: data.area_m2 || "",
           rooms: data.rooms || "",
+          roomLayout: data.room_layout || "",
           floor: data.floor || "",
           totalFloors: data.total_floors || "",
           yearBuilt: data.year_built || "",
@@ -136,7 +190,8 @@ export default function PropertyEditPage() {
           neighborhood: data.neighborhood || "",
           highlights: data.highlights || [],
           description: data.description || "",
-          notes: data.notes || ""
+          notes: data.notes || "",
+          masterId: data.master_id || null
         })
         setIsDirty(false)
         setLoading(false)
@@ -149,13 +204,13 @@ export default function PropertyEditPage() {
     if (!originalValues) return
 
     const currentValues = {
-      status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt,
-      balcony, matterport, availableDate, neighborhood, highlights, description, notes
+      status, isPublic, rent, areaM2, rooms, roomLayout, floor, totalFloors, yearBuilt,
+      balcony, matterport, availableDate, neighborhood, highlights, description, notes, masterId
     }
 
     const dirty = JSON.stringify(currentValues) !== JSON.stringify(originalValues)
     setIsDirty(dirty)
-  }, [status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, neighborhood, highlights, description, notes, originalValues])
+  }, [status, isPublic, rent, areaM2, rooms, roomLayout, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, neighborhood, highlights, description, notes, masterId, originalValues])
 
   // Save handler
   const handleSave = useCallback(async () => {
@@ -170,6 +225,7 @@ export default function PropertyEditPage() {
       rent: rent === "" ? 0 : Number(rent),
       area_m2: areaM2 === "" ? null : Number(areaM2),
       rooms: rooms === "" ? null : Number(rooms),
+      room_layout: roomLayout || null,
       floor: floor === "" ? null : Number(floor),
       total_floors: totalFloors === "" ? null : Number(totalFloors),
       year_built: yearBuilt === "" ? null : Number(yearBuilt),
@@ -179,7 +235,8 @@ export default function PropertyEditPage() {
       neighborhood: neighborhood || null,
       highlights: highlights.length > 0 ? highlights : null,
       description: description || null,
-      notes: notes || null
+      notes: notes || null,
+      master_id: masterId
     }
 
     try {
@@ -192,8 +249,8 @@ export default function PropertyEditPage() {
       if (res.ok) {
         setSaveState("saved")
         setOriginalValues({
-          status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt,
-          balcony, matterport, availableDate, neighborhood, highlights, description, notes
+          status, isPublic, rent, areaM2, rooms, roomLayout, floor, totalFloors, yearBuilt,
+          balcony, matterport, availableDate, neighborhood, highlights, description, notes, masterId
         })
         setIsDirty(false)
         setTimeout(() => setSaveState("idle"), 2000)
@@ -207,7 +264,7 @@ export default function PropertyEditPage() {
     }
 
     setSaving(false)
-  }, [isDirty, saving, status, isPublic, rent, areaM2, rooms, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, neighborhood, highlights, description, notes, propertyId])
+  }, [isDirty, saving, status, isPublic, rent, areaM2, rooms, roomLayout, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, neighborhood, highlights, description, notes, masterId, propertyId])
 
   // Auto-save: tallenna 2s kuluttua muutoksesta
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -293,6 +350,50 @@ export default function PropertyEditPage() {
   const cancelEditHighlight = () => {
     setEditingHighlightIndex(null)
     setEditingHighlightValue("")
+  }
+
+  // Drag and drop handlers for highlights
+  const handleDragStart = (index: number) => {
+    setDraggedHighlightIndex(index)
+  }
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    setDragOverHighlightIndex(index)
+  }
+
+  const handleDragLeave = () => {
+    setDragOverHighlightIndex(null)
+  }
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault()
+    if (draggedHighlightIndex === null || draggedHighlightIndex === dropIndex) {
+      setDraggedHighlightIndex(null)
+      setDragOverHighlightIndex(null)
+      return
+    }
+
+    const newHighlights = [...highlights]
+    const [draggedItem] = newHighlights.splice(draggedHighlightIndex, 1)
+    newHighlights.splice(dropIndex, 0, draggedItem)
+    setHighlights(newHighlights)
+    setDraggedHighlightIndex(null)
+    setDragOverHighlightIndex(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedHighlightIndex(null)
+    setDragOverHighlightIndex(null)
+  }
+
+  // Toggle preset highlight
+  const togglePresetHighlight = (highlight: string) => {
+    if (highlights.includes(highlight)) {
+      setHighlights(highlights.filter(h => h !== highlight))
+    } else {
+      setHighlights([...highlights, highlight])
+    }
   }
 
   useEffect(() => {
@@ -506,6 +607,17 @@ export default function PropertyEditPage() {
                   />
                 </div>
 
+                <div className="col-span-2">
+                  <label className="block text-[11px] text-muted-foreground mb-1">Kokoonpano</label>
+                  <input
+                    type="text"
+                    value={roomLayout}
+                    onChange={(e) => setRoomLayout(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="esim. 2h + k + s"
+                  />
+                </div>
+
                 <div>
                   <label className="block text-[11px] text-muted-foreground mb-1">Kerros</label>
                   <div className="flex gap-1 items-center">
@@ -570,7 +682,12 @@ export default function PropertyEditPage() {
             {/* Highlights */}
             <div>
               <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-2">Highlights</h2>
-              <div className="flex flex-wrap gap-1.5">
+
+              {/* Selected highlights - draggable */}
+              <div className="flex flex-wrap gap-1.5 mb-3 min-h-[28px] p-2 rounded-[8px] border border-border bg-muted/30">
+                {highlights.length === 0 && (
+                  <span className="text-xs text-muted-foreground">Valitse alta tai lisää oma</span>
+                )}
                 {highlights.map((h, i) => (
                   editingHighlightIndex === i ? (
                     <input
@@ -594,17 +711,37 @@ export default function PropertyEditPage() {
                   ) : (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] bg-secondary text-sm group cursor-pointer hover:bg-secondary/70"
+                      draggable
+                      onDragStart={() => handleDragStart(i)}
+                      onDragOver={(e) => handleDragOver(e, i)}
+                      onDragLeave={handleDragLeave}
+                      onDrop={(e) => handleDrop(e, i)}
+                      onDragEnd={handleDragEnd}
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] bg-primary text-primary-foreground text-sm group cursor-grab active:cursor-grabbing select-none transition-all ${
+                        draggedHighlightIndex === i ? "opacity-50 scale-95" : ""
+                      } ${
+                        dragOverHighlightIndex === i && draggedHighlightIndex !== i
+                          ? "ring-2 ring-white ring-offset-1"
+                          : ""
+                      }`}
                       onClick={() => startEditHighlight(i)}
-                      title="Klikkaa muokataksesi"
+                      title="Raahaa järjestääksesi, klikkaa muokataksesi"
                     >
+                      <svg className="w-3 h-3 opacity-50 mr-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="9" cy="6" r="1.5" />
+                        <circle cx="15" cy="6" r="1.5" />
+                        <circle cx="9" cy="12" r="1.5" />
+                        <circle cx="15" cy="12" r="1.5" />
+                        <circle cx="9" cy="18" r="1.5" />
+                        <circle cx="15" cy="18" r="1.5" />
+                      </svg>
                       {h}
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
                           removeHighlight(i)
                         }}
-                        className="text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="opacity-70 hover:opacity-100 transition-opacity"
                       >
                         ×
                       </button>
@@ -640,11 +777,39 @@ export default function PropertyEditPage() {
                 ) : (
                   <button
                     onClick={() => setShowHighlightInput(true)}
-                    className="px-2 py-0.5 rounded-[6px] border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition"
+                    className="px-2 py-0.5 rounded-[6px] border border-dashed border-border text-sm text-muted-foreground hover:text-foreground hover:border-foreground transition bg-background"
                   >
-                    + Lisää
+                    + Oma
                   </button>
                 )}
+              </div>
+
+              {/* Preset categories - two columns */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                {Object.entries(PRESET_HIGHLIGHTS).map(([category, presets]) => (
+                  <div key={category}>
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wide">{category}</span>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {presets.map((preset) => {
+                        const isSelected = highlights.includes(preset)
+                        return (
+                          <button
+                            key={preset}
+                            onClick={() => togglePresetHighlight(preset)}
+                            className={`px-1.5 py-0.5 rounded-[5px] text-[11px] transition-all ${
+                              isSelected
+                                ? "bg-primary/20 text-primary border border-primary/30"
+                                : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80 border border-transparent"
+                            }`}
+                          >
+                            {isSelected && <span className="mr-0.5">✓</span>}
+                            {preset}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -728,6 +893,85 @@ export default function PropertyEditPage() {
               >
                 Hallitse kuvia →
               </Link>
+            </div>
+
+            {/* Master/Slave Status */}
+            <div className="border-t border-border pt-4">
+              <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-3">Periytyminen</h2>
+              {masterId ? (
+                // This is a SLAVE
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="px-2 py-0.5 rounded bg-amber-100 text-amber-700 text-xs font-medium">SLAVE</span>
+                    <span className="text-muted-foreground">Perii kohteesta:</span>
+                  </div>
+                  {masterProperty && (
+                    <Link
+                      href={`/admin/properties/${masterProperty.id}`}
+                      className="block p-2 rounded-[8px] border border-amber-200 bg-amber-50 hover:bg-amber-100 transition"
+                    >
+                      <p className="text-sm font-medium">{extractStreetAddress(masterProperty.address)}</p>
+                      <p className="text-xs text-muted-foreground">#{masterProperty.db_id} · {masterProperty.city}</p>
+                    </Link>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Periytyvät: m², huoneet, kokoonpano, parveke, rak.vuosi, matterport, highlights, esittelyteksti
+                  </p>
+                  <button
+                    onClick={() => setMasterId(null)}
+                    className="w-full px-3 py-2 text-sm rounded-[8px] border border-red-200 text-red-600 hover:bg-red-50 transition text-center"
+                  >
+                    Irrota masterista
+                  </button>
+                </div>
+              ) : (
+                // This is standalone - can select a master from related properties
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="px-2 py-0.5 rounded bg-primary/20 text-primary text-xs font-medium">ITSENÄINEN</span>
+                  </div>
+                  {relatedProperties.length > 0 ? (
+                    <>
+                      <p className="text-xs text-muted-foreground">Valitse master saman talon kohteista:</p>
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                        {relatedProperties.map(rel => {
+                          const isAlreadyMaster = rel.master_id === property.id
+                          return (
+                            <button
+                              key={rel.id}
+                              onClick={() => !isAlreadyMaster && setMasterId(rel.id)}
+                              disabled={isAlreadyMaster}
+                              className={`w-full text-left p-2 rounded-[8px] border transition text-xs ${
+                                isAlreadyMaster
+                                  ? "border-green-200 bg-green-50 text-green-700 cursor-default"
+                                  : "border-border hover:border-primary hover:bg-primary/5 cursor-pointer"
+                              }`}
+                              title={isAlreadyMaster ? "Tämä kohde perii sinulta" : "Klikkaa asettaaksesi masteriksi"}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium">{extractStreetAddress(rel.address)}</span>
+                                {isAlreadyMaster ? (
+                                  <span className="px-1.5 py-0.5 rounded bg-green-100 text-[10px]">SLAVE</span>
+                                ) : (
+                                  <span className="text-muted-foreground">→ Master</span>
+                                )}
+                              </div>
+                              <span className="text-muted-foreground">#{rel.db_id}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Master-kohteelta periytyvät: m², huoneet, kokoonpano, parveke, rak.vuosi, matterport, highlights, esittelyteksti
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Ei löytynyt saman talon kohteita. Master/slave toimii vain saman rakennuksen asunnoille.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Contracts */}

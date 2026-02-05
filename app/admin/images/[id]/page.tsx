@@ -51,7 +51,8 @@ export default function ImageSelectorPage() {
   const [selectedRelated, setSelectedRelated] = useState<Set<string>>(new Set())
   const [allProperties, setAllProperties] = useState<PropertyWithImages[]>([])
   const [doneProperties, setDoneProperties] = useState<Set<string>>(new Set())
-  const [moveFromIndex, setMoveFromIndex] = useState<number | null>(null)
+  const [draggedImageIndex, setDraggedImageIndex] = useState<number | null>(null)
+  const [dragOverImageIndex, setDragOverImageIndex] = useState<number | null>(null)
 
   useEffect(() => {
     // Load all properties with raw images (for sidebar)
@@ -112,37 +113,57 @@ export default function ImageSelectorPage() {
     setSelectedImages(new Set())
   }
 
-  // Klikkaa numeroa siirtääksesi kuvan
-  const handleMoveClick = async (index: number) => {
-    if (moveFromIndex === null) {
-      // Valitse kuva siirrettäväksi
-      setMoveFromIndex(index)
-    } else if (moveFromIndex === index) {
-      // Peru valinta
-      setMoveFromIndex(null)
-    } else {
-      // Siirrä kuva ja tallenna
-      const newImages = [...rawImages]
-      const [moved] = newImages.splice(moveFromIndex, 1)
-      newImages.splice(index, 0, moved)
-      setRawImages(newImages)
-      setMoveFromIndex(null)
+  // Drag and drop handlers for images
+  const handleImageDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedImageIndex(index)
+    e.dataTransfer.effectAllowed = "move"
+  }
 
-      // Tallenna palvelimelle
-      try {
-        await fetch(`/api/images/raw/${propertyId}/reorder`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ order: newImages.map(img => img.name) })
-        })
-        // Lataa uudelleen saadaksesi uudet tiedostonimet
-        const res = await fetch(`/api/images/raw/${propertyId}`)
-        const data = await res.json()
-        setRawImages(data.images || [])
-      } catch (err) {
-        console.error("Reorder failed:", err)
-      }
+  const handleImageDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+    setDragOverImageIndex(index)
+  }
+
+  const handleImageDragLeave = () => {
+    setDragOverImageIndex(null)
+  }
+
+  const handleImageDrop = async (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault()
+    if (draggedImageIndex === null || draggedImageIndex === dropIndex) {
+      setDraggedImageIndex(null)
+      setDragOverImageIndex(null)
+      return
     }
+
+    // Siirrä kuva ja tallenna
+    const newImages = [...rawImages]
+    const [moved] = newImages.splice(draggedImageIndex, 1)
+    newImages.splice(dropIndex, 0, moved)
+    setRawImages(newImages)
+    setDraggedImageIndex(null)
+    setDragOverImageIndex(null)
+
+    // Tallenna palvelimelle
+    try {
+      await fetch(`/api/images/raw/${propertyId}/reorder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order: newImages.map(img => img.name) })
+      })
+      // Lataa uudelleen saadaksesi uudet tiedostonimet
+      const res = await fetch(`/api/images/raw/${propertyId}`)
+      const data = await res.json()
+      setRawImages(data.images || [])
+    } catch (err) {
+      console.error("Reorder failed:", err)
+    }
+  }
+
+  const handleImageDragEnd = () => {
+    setDraggedImageIndex(null)
+    setDragOverImageIndex(null)
   }
 
   const toggleRelated = (id: string) => {
@@ -420,23 +441,9 @@ export default function ImageSelectorPage() {
               >
                 Poista valinnat
               </button>
-              {moveFromIndex !== null ? (
-                <span className="text-sm text-green-600 font-medium">
-                  Klikkaa kohtaa johon siirrät kuvan {moveFromIndex + 1}
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground">
-                  Klikkaa numeroa siirtääksesi
-                </span>
-              )}
-              {moveFromIndex !== null && (
-                <button
-                  onClick={() => setMoveFromIndex(null)}
-                  className="px-3 py-1 text-xs rounded bg-secondary hover:bg-secondary/80"
-                >
-                  Peru
-                </button>
-              )}
+              <span className="text-xs text-muted-foreground">
+                Raahaa kuvia järjestääksesi
+              </span>
               <div className="flex-1" />
               <button
                 onClick={processImages}
@@ -518,11 +525,17 @@ export default function ImageSelectorPage() {
               {rawImages.map((img, index) => (
                 <div
                   key={img.name}
-                  className={`relative rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                    moveFromIndex === index
-                      ? "border-primary ring-4 ring-primary/30 scale-[1.02] shadow-lg"
-                      : moveFromIndex !== null
-                        ? "border-dashed border-green-500 hover:border-green-400 hover:bg-green-50"
+                  draggable
+                  onDragStart={(e) => handleImageDragStart(e, index)}
+                  onDragOver={(e) => handleImageDragOver(e, index)}
+                  onDragLeave={handleImageDragLeave}
+                  onDrop={(e) => handleImageDrop(e, index)}
+                  onDragEnd={handleImageDragEnd}
+                  className={`relative rounded-lg overflow-hidden border-2 transition-all duration-200 cursor-grab active:cursor-grabbing ${
+                    draggedImageIndex === index
+                      ? "opacity-50 scale-95 border-primary"
+                      : dragOverImageIndex === index && draggedImageIndex !== index
+                        ? "border-primary ring-4 ring-primary/30 scale-[1.02] shadow-lg"
                         : selectedImages.has(img.name)
                           ? "border-primary ring-2 ring-primary/20"
                           : "border-border hover:border-primary/50"
@@ -541,20 +554,6 @@ export default function ImageSelectorPage() {
                       unoptimized
                       draggable={false}
                     />
-                    {/* Järjestysnumero - klikattava siirtopainike */}
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleMoveClick(index); }}
-                      className={`absolute top-2 left-2 w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
-                        moveFromIndex === index
-                          ? "bg-primary text-white scale-110 shadow-lg"
-                          : moveFromIndex !== null
-                            ? "bg-green-500 text-white hover:bg-green-400 hover:scale-110"
-                            : "bg-black/70 text-white hover:bg-primary"
-                      }`}
-                      title={moveFromIndex === index ? "Peru" : moveFromIndex !== null ? `Siirrä tähän (${index + 1})` : "Siirrä"}
-                    >
-                      {moveFromIndex === index ? "✓" : moveFromIndex !== null ? index + 1 : index + 1}
-                    </button>
                     {selectedImages.has(img.name) && (
                       <div className="absolute top-2 right-8 w-6 h-6 bg-primary rounded-full flex items-center justify-center pointer-events-none">
                         <svg className="w-4 h-4 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">

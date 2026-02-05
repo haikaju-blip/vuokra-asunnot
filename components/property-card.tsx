@@ -9,6 +9,7 @@ import type { Property } from "@/lib/properties"
 
 interface PropertyCardProps {
   property: Property
+  onContactClick?: (property: Property) => void
 }
 
 // Convert base path to sized image path
@@ -36,7 +37,7 @@ function getStreetName(fullName: string): string {
   return fullName.replace(/\s+[A-Z]\s*\d+.*$/, "").trim()
 }
 
-export function PropertyCard({ property }: PropertyCardProps) {
+export function PropertyCard({ property, onContactClick }: PropertyCardProps) {
   const isAvailable = property.status === "available"
   const href = `/kohde/${property.id}`
 
@@ -265,9 +266,33 @@ export function PropertyCard({ property }: PropertyCardProps) {
 
         <div className="p-5 space-y-3">
           <div className="space-y-1">
-            <h3 className="text-lg font-semibold text-card-foreground leading-tight text-balance">
-              {getStreetName(property.name)}
-            </h3>
+            {/* Otsikkorivi: nimi + CTA */}
+            <div className="flex items-start justify-between gap-3">
+              <h3 className="text-lg font-semibold text-card-foreground leading-tight text-balance">
+                {getStreetName(property.name)}
+              </h3>
+              {onContactClick && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    onContactClick(property)
+                  }}
+                  className="
+                    text-xs font-medium shrink-0
+                    text-elea-navy bg-transparent
+                    px-3 py-1.5
+                    border border-elea-border rounded-lg
+                    transition-all duration-150
+                    hover:bg-elea-navy hover:border-elea-navy hover:text-white
+                    focus-visible:outline-2 focus-visible:outline-elea-navy focus-visible:outline-offset-2
+                  "
+                  aria-label={`Ota yhteyttä kohteesta ${property.name}`}
+                >
+                  Ota yhteyttä
+                </button>
+              )}
+            </div>
             <p className="text-[13px] text-muted-foreground">
               {property.neighborhood ? `${property.neighborhood}, ${property.location}` : property.location}
             </p>
@@ -285,7 +310,9 @@ export function PropertyCard({ property }: PropertyCardProps) {
               if (property.size > 0) {
                 parts.push(<span key="size">{property.size} m²</span>)
               }
-              if (property.rooms > 0) {
+              if (property.roomLayout) {
+                parts.push(<span key="rooms">{property.roomLayout}</span>)
+              } else if (property.rooms > 0) {
                 parts.push(
                   <span key="rooms">
                     {property.rooms} {property.rooms === 1 ? "huone" : "huonetta"}
@@ -302,25 +329,25 @@ export function PropertyCard({ property }: PropertyCardProps) {
               }, [])
             })()}
           </p>
-          {property.highlights && property.highlights.length > 0 ? (
-            <div className="flex flex-wrap gap-1 h-[52px] overflow-hidden">
-              {property.highlights.slice(0, 6).map((h, i) => (
-                <span
-                  key={i}
-                  className="px-2 py-0.5 rounded-[6px] bg-secondary text-[11px] text-muted-foreground"
-                >
-                  {h}
-                </span>
-              ))}
-              {property.highlights.length > 6 && (
-                <span className="px-2 py-0.5 text-[11px] text-muted-foreground">
-                  +{property.highlights.length - 6}
-                </span>
-              )}
-            </div>
-          ) : (
-            <div className="h-[52px]" />
-          )}
+          <div className="min-h-[52px]">
+            {property.highlights && property.highlights.length > 0 ? (
+              <div className="flex flex-wrap gap-1 max-h-[52px] overflow-hidden items-start content-start">
+                {property.highlights.slice(0, 5).map((h, i) => (
+                  <span
+                    key={i}
+                    className="px-2 py-0.5 rounded-[6px] bg-secondary text-[11px] text-muted-foreground"
+                  >
+                    {h}
+                  </span>
+                ))}
+                {property.highlights.length > 5 && (
+                  <span className="px-2 py-0.5 rounded-[6px] bg-secondary/50 text-[11px] text-muted-foreground">
+                    +{property.highlights.length - 5}
+                  </span>
+                )}
+              </div>
+            ) : null}
+          </div>
         </div>
       </article>
     </Link>

@@ -8,6 +8,7 @@ interface PropertyGridProps {
   showLoadMore: boolean
   onLoadMore: () => void
   isLoading?: boolean
+  onContactClick?: (property: Property) => void
 }
 
 export function PropertyGrid({
@@ -15,6 +16,7 @@ export function PropertyGrid({
   showLoadMore,
   onLoadMore,
   isLoading = false,
+  onContactClick,
 }: PropertyGridProps) {
   if (properties.length === 0) {
     return (
@@ -47,7 +49,7 @@ export function PropertyGrid({
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {properties.map((property) => (
-          <PropertyCard key={property.id} property={property} />
+          <PropertyCard key={property.id} property={property} onContactClick={onContactClick} />
         ))}
       </div>
       {showLoadMore && (

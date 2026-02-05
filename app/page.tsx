@@ -1,12 +1,43 @@
+import type { Metadata } from "next"
 import { getProperties } from "@/lib/properties"
 import { PropertyListClient } from "@/components/property-list-client"
+
+// Force dynamic rendering - changes to properties.json are reflected immediately
+export const dynamic = "force-dynamic"
+
+// Etusivun metadata (yliajaa layout.tsx:n oletusotsikon)
+export const metadata: Metadata = {
+  title: "Vapaat vuokra-asunnot | ELEA asunnot",
+  description: "Selaa ELEA:n vapaita ja pian vapautuvia vuokra-asuntoja. Laadukkaita koteja kuudella paikkakunnalla.",
+  openGraph: {
+    title: "Vapaat vuokra-asunnot | ELEA asunnot",
+    description: "Selaa ELEA:n vapaita ja pian vapautuvia vuokra-asuntoja.",
+    images: [{ url: "/og-etusivu.webp", width: 1200, height: 630, alt: "ELEA asunnot" }],
+  },
+}
+
+// Organization JSON-LD (SEO)
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "ELEA asunnot",
+  url: "https://asunnot.elea.fi",
+  logo: "https://asunnot.elea.fi/logo-v4.png",
+  description: "Perheyritys vuodesta 1988. Vuokra-asuntoja kuudella paikkakunnalla.",
+  foundingDate: "1988",
+}
 
 export default function PropertiesPage() {
   // Server-side data fetching - SEO-friendly!
   const properties = getProperties()
 
   return (
-    <div className="min-h-screen bg-elea-bg">
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+      />
+      <div className="min-h-screen bg-elea-bg">
       {/* Header */}
       <header style={{ background: '#FFFFFF', borderBottom: '1px solid #E5DFD6' }}>
         <div className="max-w-[1200px] mx-auto px-6">
@@ -182,5 +213,6 @@ export default function PropertiesPage() {
         Y-tunnus: XXXXXXX-X
       </footer>
     </div>
+    </>
   )
 }

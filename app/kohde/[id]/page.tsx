@@ -1,11 +1,46 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import type { Metadata } from "next"
-import { getProperty, getProperties } from "@/lib/properties"
+import { getProperty, getProperties, Property } from "@/lib/properties"
 import { PropertyPageClient } from "@/components/property-page-client"
 
 interface PageProps {
   params: Promise<{ id: string }>
+}
+
+// JSON-LD Structured Data for property listings (SEO)
+function generatePropertyJsonLd(property: Property) {
+  const baseUrl = "https://asunnot.elea.fi"
+  const imageUrl = property.gallery?.[0]
+    ? `${baseUrl}${property.gallery[0]}-large.webp`
+    : undefined
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "Apartment",
+    name: property.name,
+    description: property.description || `${property.size} m², ${property.rooms} huonetta`,
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: property.name,
+      addressLocality: property.location,
+      addressCountry: "FI",
+    },
+    numberOfRooms: property.rooms,
+    floorSize: { "@type": "QuantitativeValue", value: property.size, unitCode: "MTK" },
+    ...(property.yearBuilt && { yearBuilt: property.yearBuilt }),
+    ...(imageUrl && { image: imageUrl }),
+    ...(property.matterportUrl && { hasMap: { "@type": "URL", url: property.matterportUrl } }),
+    offers: {
+      "@type": "Offer",
+      price: property.price,
+      priceCurrency: "EUR",
+      availability: property.status === "available"
+        ? "https://schema.org/InStock"
+        : "https://schema.org/PreOrder",
+    },
+    url: `${baseUrl}/kohde/${property.id}`,
+  }
 }
 
 // Generate static paths for all properties
@@ -77,5 +112,15 @@ export default async function PropertyPage({ params }: PageProps) {
     )
   }
 
-  return <PropertyPageClient property={property} />
+  const jsonLd = generatePropertyJsonLd(property)
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <PropertyPageClient property={property} />
+    </>
+  )
 }

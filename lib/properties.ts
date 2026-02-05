@@ -12,6 +12,7 @@ export interface Property {
   image: string
   size: number
   rooms: number
+  roomLayout?: string
   price: number
   status: "available" | "upcoming"
   availableDate?: string
@@ -26,7 +27,15 @@ export interface Property {
   yearBuilt?: number
   highlights?: string[]
   description?: string
+  // Master/Slave
+  masterId?: string
 }
+
+// Fields that inherit from master to slave
+export const INHERITABLE_FIELDS = [
+  'area_m2', 'rooms', 'room_layout', 'balcony', 'year_built',
+  'matterport', 'highlights', 'description'
+] as const
 
 /** Raw property from JSON database */
 export interface RawProperty {
@@ -36,7 +45,9 @@ export interface RawProperty {
   city: string
   area_m2: number | null
   rooms: number | null
+  room_layout?: string | null
   floor: number | null
+  master_id?: string | null  // If set, this property inherits from master
   total_floors?: number | null
   balcony: boolean | null
   rent: number
@@ -127,6 +138,7 @@ function transformRawProperty(raw: RawProperty): Property {
     image: gallery[0] ? `${gallery[0]}-large.webp` : "/placeholder.svg",
     size: raw.area_m2 || 0,
     rooms: raw.rooms || 0,
+    roomLayout: raw.room_layout || undefined,
     price: raw.rent || 0,
     status,
     availableDate,
@@ -140,17 +152,58 @@ function transformRawProperty(raw: RawProperty): Property {
     yearBuilt: raw.year_built || undefined,
     highlights: raw.highlights || undefined,
     description: raw.description || undefined,
+    masterId: raw.master_id || undefined,
+  }
+}
+
+/** Apply master properties to slave (inheritable fields only) */
+function applyMasterToSlave(slave: Property, master: Property): Property {
+  return {
+    ...slave,
+    // Inherit from master if slave doesn't have own value
+    size: slave.size || master.size,
+    rooms: slave.rooms || master.rooms,
+    roomLayout: slave.roomLayout || master.roomLayout,
+    balcony: slave.balcony ?? master.balcony,
+    yearBuilt: slave.yearBuilt || master.yearBuilt,
+    matterportUrl: slave.matterportUrl || master.matterportUrl,
+    highlights: (slave.highlights && slave.highlights.length > 0) ? slave.highlights : master.highlights,
+    description: slave.description || master.description,
+  }
+}
+
+/** Server-side: Get all raw properties */
+function getAllRawProperties(): RawProperty[] {
+  try {
+    const data = readFileSync(DATA_PATH, "utf-8")
+    return JSON.parse(data)
+  } catch (error) {
+    console.error("Error reading properties:", error)
+    return []
   }
 }
 
 /** Server-side: Get all public properties directly from JSON file */
 export function getProperties(): Property[] {
   try {
-    const data = readFileSync(DATA_PATH, "utf-8")
-    const rawProperties: RawProperty[] = JSON.parse(data)
-    return rawProperties
-      .filter(p => p.public === true)
-      .map(transformRawProperty)
+    const rawProperties = getAllRawProperties()
+    const allTransformed = rawProperties.map(transformRawProperty)
+
+    // Create lookup map for masters
+    const propertyMap = new Map(allTransformed.map(p => [p.id, p]))
+
+    // Apply master inheritance to slaves
+    const withInheritance = allTransformed.map(prop => {
+      if (prop.masterId) {
+        const master = propertyMap.get(prop.masterId)
+        if (master) {
+          return applyMasterToSlave(prop, master)
+        }
+      }
+      return prop
+    })
+
+    return withInheritance.filter(p => p.public === true)
   } catch (error) {
     console.error("Error reading properties:", error)
     return []
@@ -160,11 +213,22 @@ export function getProperties(): Property[] {
 /** Server-side: Get single property by ID */
 export function getProperty(id: string): Property | null {
   try {
-    const data = readFileSync(DATA_PATH, "utf-8")
-    const rawProperties: RawProperty[] = JSON.parse(data)
+    const rawProperties = getAllRawProperties()
     const raw = rawProperties.find(p => p.id === id)
     if (!raw) return null
-    return transformRawProperty(raw)
+
+    const property = transformRawProperty(raw)
+
+    // Apply master inheritance if slave
+    if (property.masterId) {
+      const masterRaw = rawProperties.find(p => p.id === property.masterId)
+      if (masterRaw) {
+        const master = transformRawProperty(masterRaw)
+        return applyMasterToSlave(property, master)
+      }
+    }
+
+    return property
   } catch (error) {
     console.error("Error reading property:", error)
     return null
