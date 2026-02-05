@@ -88,10 +88,10 @@ export function MatterportModal({ property, isOpen, onClose, onContact }: Matter
         onClick={onClose}
       />
 
-      {/* Modal-sisältö - mobiilissa koko näyttö */}
+      {/* Modal-sisältö - mobiili pysty: koko näyttö, muut: keskitetty 4:3 */}
       <div
         ref={modalRef}
-        className="relative w-full h-full sm:h-auto sm:max-h-[90vh] sm:max-w-5xl sm:mx-4 bg-white sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+        className="relative w-full h-full portrait:max-sm:h-full landscape:max-sm:h-auto landscape:max-sm:max-h-[90vh] landscape:max-sm:mx-4 landscape:max-sm:rounded-2xl sm:h-auto sm:max-h-[90vh] sm:max-w-5xl sm:mx-4 bg-white sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col"
       >
         {/* Sulje-painike */}
         <button
@@ -114,13 +114,12 @@ export function MatterportModal({ property, isOpen, onClose, onContact }: Matter
           </svg>
         </button>
 
-        {/* Matterport iframe - mobiilissa flex-grow */}
-        <div className="flex-grow bg-gray-900 min-h-0">
+        {/* Matterport iframe - 4:3 aspect ratio, mobiili pysty: flex-grow */}
+        <div className="bg-gray-900 aspect-[4/3] portrait:max-sm:aspect-auto portrait:max-sm:flex-grow portrait:max-sm:min-h-0">
           <iframe
             src={matterportUrl}
             title={`3D-kierros: ${property.name}`}
             className="w-full h-full"
-            style={{ minHeight: "300px" }}
             allowFullScreen
             allow="xr-spatial-tracking"
           />
