@@ -12,13 +12,14 @@ interface MatterportModalProps {
 
 // Rakenna optimoitu Matterport URL
 function buildMatterportUrl(baseUrl: string): string {
-  // Lisää parametrit: quick start, ei brändäystä, ei apua, autoplay
+  // Lisää parametrit: quick start, ei brändäystä, automaattinen kierros
   const url = new URL(baseUrl)
   url.searchParams.set("qs", "1")      // Quick start - suoraan sisään
   url.searchParams.set("brand", "0")   // Piilota Matterport-brändäys
   url.searchParams.set("help", "0")    // Piilota navigointiohjeet
-  url.searchParams.set("play", "1")    // Autoplay
+  url.searchParams.set("ts", "3")      // Aloita Guided Tour 3s kuluttua (vaatii Highlight Reelin)
   url.searchParams.set("dh", "0")      // Piilota dollhouse-nappi
+  url.searchParams.set("hl", "0")      // Piilota highlight reel -palkki
   return url.toString()
 }
 

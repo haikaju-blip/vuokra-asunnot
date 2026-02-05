@@ -32,10 +32,11 @@ Sivusto käyttää **server-side renderöintiä** SEO:n optimoimiseksi:
 
 ```
 page.tsx (server)
-└── PropertyListClient (client) - filtteröinti, load more, yhteydenotto-modal
+└── PropertyListClient (client) - filtteröinti, load more, modalit
     ├── FilterBar (client)
     ├── PropertyGrid
-    │   └── PropertyCard - karuselli, "Ota yhteyttä" CTA-painike
+    │   └── PropertyCard - karuselli, 3D-badge, "Ota yhteyttä"
+    │       └── MatterportModal (client) - 3D-kierros modaalissa
     └── ContactModal (client) - yhteydenottolomake
 
 kohde/[id]/page.tsx (server) + generateMetadata
@@ -154,6 +155,64 @@ Client component kohdesivulle:
 - Embla-karuselli kuvagallerialle
 - Matterport iframe lazy-load
 - Mobiili-CTA
+
+### MatterportModal
+
+3D-kierros modaalissa (ei uusi välilehti):
+
+```tsx
+// components/matterport-modal.tsx
+<MatterportModal
+  property={property}
+  isOpen={matterportOpen}
+  onClose={() => setMatterportOpen(false)}
+  onContact={() => openContactModal()}
+/>
+```
+
+**Ominaisuudet:**
+- 3D-badge kortissa avaa modalin (ei uutta välilehteä)
+- Mobiili pysty: koko näyttö (flex-grow)
+- Mobiili vaaka + tablet + desktop: 4:3 aspect ratio
+- ESC-näppäin ja taustan klikkaus sulkee
+- Focus trap saavutettavuutta varten
+- Footer: kohteen tiedot + "Kohteen tiedot" + "Ota yhteyttä"
+
+**Matterport URL-parametrit:**
+```typescript
+url.searchParams.set("qs", "1")      // Quick start - suoraan sisään
+url.searchParams.set("brand", "0")   // Piilota Matterport-brändäys
+url.searchParams.set("help", "0")    // Piilota navigointiohjeet
+url.searchParams.set("ts", "3")      // Aloita Guided Tour 3s kuluttua
+url.searchParams.set("dh", "0")      // Piilota dollhouse-nappi
+url.searchParams.set("hl", "0")      // Piilota highlight reel -palkki
+```
+
+**Huom:** `ts=X` vaatii Matterport-tilassa olevan Highlight Reel -konfiguraation.
+
+### 3D-badge (Kultainen Glow Ring)
+
+Korttien oikeassa yläkulmassa oleva 3D-nappi:
+
+```css
+/* globals.css */
+@keyframes glow-ring {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.5); opacity: 0; }
+}
+
+.badge-3d { position: relative; display: flex; }
+.badge-3d::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--elea-warm);
+  animation: glow-ring 2.5s ease-in-out infinite;
+}
+```
+
+**Reduced motion -tuki:** Animaatio poistetaan käytöstä.
 
 ---
 
@@ -313,10 +372,11 @@ apps/esittely/
 │       ├── properties/related/[id]/   # Saman talon kohteet
 │       └── admin/properties/[id]/     # Admin API
 ├── components/
-│   ├── property-card.tsx     # Kortti + karuselli + CTA
+│   ├── property-card.tsx     # Kortti + karuselli + 3D-badge
 │   ├── property-grid.tsx
-│   ├── property-list-client.tsx  # Filtteröinti + yhteydenotto-modal
+│   ├── property-list-client.tsx  # Filtteröinti + modalit
 │   ├── contact-modal.tsx     # Yhteydenottolomake (modal)
+│   ├── matterport-modal.tsx  # 3D-kierros modaalissa
 │   ├── property-page-client.tsx  # Kohdesivun client-logiikka
 │   ├── filter-bar.tsx
 │   ├── contact-cta-card.tsx
@@ -368,7 +428,48 @@ systemctl status vuokra-esittely.service
 
 ---
 
+## Tulevat kehitysideat
+
+### Video + Matterport -hybridi
+
+Suunnitelma Matterport-riippuvuuden vähentämiseksi:
+
+1. **Nauhoita Matterport-kierrokset videoiksi** (screen recording / MP export)
+2. **Näytä video oletuksena** modalissa - nopea, hallittu, toimii aina
+3. **"Tutki itse 3D:nä"** -nappi avaa Matterportin (valinnainen)
+4. **Myöhemmin** voidaan lopettaa Matterport-tilaus
+
+**Hyödyt:**
+- Ei riippuvuutta MP:n parametreista/toiminnallisuudesta
+- Tasainen käyttökokemus kaikille
+- Nopea lataus (video CDN:stä)
+- Täysi hallinta sisältöön
+
+**Toteutus:** Puppeteer/Playwright-automaatio nauhoittamaan kierrokset.
+
+---
+
 ## Muutosloki
+
+### 2026-02-05: Matterport-modali + 3D-badge
+
+**Matterport-modali:**
+- 3D-badge avaa Matterportin modaalissa (ei uusi välilehti)
+- Käyttäjä pysyy sivulla → parempi konversio
+- Kuvasuhteet: mobiili pysty koko näyttö, muut 4:3
+- URL-parametrit: qs, brand, help, ts, dh, hl
+- `ts=3` käynnistää Guided Tourin automaattisesti
+
+**3D-badge (Kultainen Glow Ring):**
+- Kultainen (#C8A96E) pyöreä badge kortin oikeassa yläkulmassa
+- Glow ring -animaatio: valoaalto laajenee ja häviää 2.5s syklillä
+- Hover: suurenee 1.1×, animaatio pysähtyy
+- Reduced motion -tuki
+
+**Tiedostot:**
+- `components/matterport-modal.tsx` (uusi)
+- `components/property-card.tsx` (3D-badge → button → modal)
+- `app/globals.css` (glow-ring keyframes + badge-3d)
 
 ### 2026-02-05: Master/Slave + Yhteydenotto
 
