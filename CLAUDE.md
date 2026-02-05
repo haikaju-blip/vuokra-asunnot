@@ -488,18 +488,46 @@ ffmpeg -i clip1.mp4 -i clip2.mp4 ... \
 └── RAPORTTI-*.md        # Dokumentaatio
 ```
 
-### Ensimmäinen toteutus: Niittyportti 2 A21
+### Ekstraktoidut Matterport-tilat (7 kpl)
 
-| Sisältö | Määrä/Koko |
-|---------|------------|
-| Kuvat | 14 kpl @ 7680×4320 (30 MB) |
-| Video (master) | 45.5s, 1080p, 23 MB |
-| Video (web) | 45.5s, 1080p, 12 MB |
-| Video (webm) | 45.5s, 1080p, 6.4 MB |
-| Huonemitat | 3 huonetta, 34.89 m² |
+| Kohde | Model ID | Kuvat | Video | Arkisto |
+|-------|----------|-------|-------|---------|
+| niittyportti-2-a21 | SQMmpYKKQ7L | 14 | 12 MB | 75 MB |
+| kilterinrinne-3-a | yT6twx42vuJ | 16 | 16 MB | 92 MB |
+| kilterinrinne-3-b | QgLMeLZmCfv | 13 | 18 MB | 93 MB |
+| tyonjohtajankatu-5-as6 | QbpBYmj8zw4 | 16 | 13 MB | 75 MB |
+| tyonjohtajankatu-5-as7 | EuJFUDWy9UX | 13 | 15 MB | 77 MB |
+| tyonjohtajankatu-5-as16 | Mf7ndzm5V1v | 17 | 14 MB | 80 MB |
+| laajaniitynkuja-7-d | H2LtzgaK7Ve | 14 | 17 MB | 91 MB |
 
-**Sijainti:** `/data/matterport-archive/niittyportti-2-a21/`
-**Web:** `http://100.119.209.125:3000/videos/niittyportti-2-a21-tour-web.mp4`
+**Yhteensä:** 582 MB arkisto, 105 kuvaa, 7 web-videota
+
+### Poistetut/ei-saatavilla olevat tilat
+
+| Model ID | Status |
+|----------|--------|
+| gpkPQS85df4 | HTTP 404 - poistettu |
+| 5g7VZfKVRtP | HTTP 404 - poistettu |
+| dn22Xkc1PcY | HTTP 404 - poistettu |
+
+### Tiedostopolut
+
+**Arkisto:** `/opt/vuokra-platform/data/matterport-archive/{kohde}/`
+**Dropzone:** `/srv/shared/DROPZONE/{kohde}-tour-web.mp4`
+**Web:** `/videos/{kohde}-tour-web.mp4`
+
+### Ekstraktointiskriptit
+
+```bash
+# Yksittäinen ekstraktointi (Python, suositeltu)
+python3 /opt/vuokra-platform/scripts/extract-matterport-batch.py MODEL_ID kohde-nimi
+
+# Batch-ekstraktointi (muokkaa TARGETS-listaa skriptissä)
+python3 /opt/vuokra-platform/scripts/extract-matterport-batch.py
+
+# Vanha bash-skripti (vaatii bc:n)
+/opt/vuokra-platform/scripts/extract-matterport.sh MODEL_ID kohde-nimi
+```
 
 ---
 
@@ -517,17 +545,24 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 
 ## Muutosloki
 
-### 🏆 2026-02-05: Matterport Data Extraction (KULTA)
+### 🏆 2026-02-05: Matterport Data Extraction - VALMIS
 
 **Strateginen läpimurto:** Matterport-datan omistaminen ilman tilin hallintaa.
 
 **Toteutettu:**
 - Matterport API:n reverse-engineering → kuvien ja metadatan ekstraktointi
 - FFmpeg-putki: Ken Burns -efekti + crossfade → ammattimainen video
-- Ensimmäinen kohde prosessoitu: Niittyportti 2 A21
-  - 14 kuvaa @ 7680×4320 (30 MB)
-  - 3 videoversiota (MP4 master, MP4 web, WebM)
-  - Huonemitat ja metadata talteen
+- Python batch-skripti automatisointiin (`extract-matterport-batch.py`)
+- **Kaikki 7 saatavilla olevaa tilaa ekstraktoitu:**
+  - niittyportti-2-a21, kilterinrinne-3-a, kilterinrinne-3-b
+  - tyonjohtajankatu-5-as6, tyonjohtajankatu-5-as7, tyonjohtajankatu-5-as16
+  - laajaniitynkuja-7-d
+- 3 tilaa ei saatavilla (poistettu Matterportista): gpkPQS85df4, 5g7VZfKVRtP, dn22Xkc1PcY
+
+**Tulokset:**
+- 582 MB arkisto korkearesoluutiokuvia + videoita
+- 105 kuvaa @ 7680×4320 (33 MP)
+- 7 web-videota (12-18 MB, 1080p, ~50s Ken Burns)
 
 **Tiedostot:**
 - `/data/matterport-archive/niittyportti-2-a21/` - Arkisto
