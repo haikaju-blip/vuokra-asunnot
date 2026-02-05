@@ -198,15 +198,19 @@ export function PropertyCard({ property, onContactClick }: PropertyCardProps) {
             </span>
           </div>
 
-          {/* 3D badge */}
+          {/* 3D badge - kultainen glow ring, avaa Matterportin */}
           {property.matterportUrl && (
             <div className="absolute top-3 right-3 z-10">
-              <span
-                className="inline-flex items-center justify-center w-10 h-10 rounded-full text-xs font-bold bg-white/90 text-foreground backdrop-blur-md ring-1 ring-black/5"
-                aria-label="3D-kierros saatavilla"
+              <a
+                href={property.matterportUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="badge-3d w-9 h-9 rounded-full bg-elea-warm flex items-center justify-center text-[11px] font-bold text-white transition-transform duration-150 hover:scale-110 focus-visible:outline-2 focus-visible:outline-elea-warm focus-visible:outline-offset-2"
+                aria-label={`Avaa 3D-kierros: ${property.name}`}
               >
                 3D
-              </span>
+              </a>
             </div>
           )}
 

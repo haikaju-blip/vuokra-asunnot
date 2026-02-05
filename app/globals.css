@@ -102,3 +102,44 @@ input, textarea, select, button {
 input:focus, textarea:focus, select:focus {
   cursor: text;
 }
+
+/* 3D-badge glow ring -animaatio */
+@keyframes glow-ring {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.badge-3d {
+  position: relative;
+  display: flex;
+}
+
+.badge-3d::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--elea-warm);
+  animation: glow-ring 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.badge-3d:hover::before {
+  animation: none;
+  opacity: 0.6;
+  transform: scale(1);
+}
+
+/* Reduced motion -tuki */
+@media (prefers-reduced-motion: reduce) {
+  .badge-3d::before {
+    animation: none;
+    opacity: 0.4;
+  }
+}
