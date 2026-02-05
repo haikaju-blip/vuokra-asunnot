@@ -428,28 +428,112 @@ systemctl status vuokra-esittely.service
 
 ---
 
+## 🏆 Matterport Data Extraction (KULTA)
+
+### Toteutettu ratkaisu Matterport-datan omistamiseen
+
+Matterport-tiloista voidaan ekstraktoida kaikki julkinen data ilman tilin omistajuutta:
+
+**Mitä saadaan irti (API:sta):**
+- Korkearesoluutiokuvat (7680×4320 = 33 MP)
+- Huonemitat (m², korkeus, leveys, syvyys)
+- Kokonaispinta-ala
+- Metadata (osoite, luontipäivä, sweep-pisteet)
+
+**Mitä EI saa ilman tiliä:**
+- Pohjapiirros PDF/DXF
+- 3D-malli (OBJ/GLB)
+- 360° panoraamat (täydet skyboxit)
+
+### Ekstraktointiprosessi
+
+```bash
+# 1. Hae kuva-ID:t
+curl -s "https://my.matterport.com/api/player/models/{MODEL_ID}/images"
+
+# 2. Hae signed URL jokaiselle kuvalle
+curl -s "https://my.matterport.com/api/player/models/{MODEL_ID}/images/{IMAGE_ID}" \
+  | jq -r '.signed_src'
+
+# 3. Lataa kuva
+curl -sL "{SIGNED_URL}" -o image.jpg
+```
+
+### Video-generointi kuvista (Ken Burns)
+
+FFmpeg-putki joka luo ammattimaisen videon still-kuvista:
+
+```bash
+# Luo yksittäiset klipit Ken Burns -efektillä
+ffmpeg -loop 1 -i image.jpg \
+  -vf "scale=8000:-1,zoompan=z='1.0+on/500':x='iw/4+on/5':y='ih/4':d=150:s=1920x1080:fps=30" \
+  -t 5 -c:v libx264 -preset fast -crf 20 clip.mp4
+
+# Yhdistä crossfade-siirtymillä
+ffmpeg -i clip1.mp4 -i clip2.mp4 ... \
+  -filter_complex "[0:v][1:v]xfade=transition=fade:duration=0.5:offset=4.5[v01];..." \
+  -c:v libx264 -preset slow -crf 18 output.mp4
+```
+
+### Arkistorakenne
+
+```
+/data/matterport-archive/{kohde-id}/
+├── images/              # Korkearesoluutiokuvat (30+ MB)
+├── video/
+│   ├── *-tour.mp4       # Master (23 MB)
+│   ├── *-tour-web.mp4   # Web-optimoitu (12 MB)
+│   └── *-tour.webm      # Pienin (6 MB)
+├── metadata.json        # Mitat, huoneet, osoite
+└── RAPORTTI-*.md        # Dokumentaatio
+```
+
+### Ensimmäinen toteutus: Niittyportti 2 A21
+
+| Sisältö | Määrä/Koko |
+|---------|------------|
+| Kuvat | 14 kpl @ 7680×4320 (30 MB) |
+| Video (master) | 45.5s, 1080p, 23 MB |
+| Video (web) | 45.5s, 1080p, 12 MB |
+| Video (webm) | 45.5s, 1080p, 6.4 MB |
+| Huonemitat | 3 huonetta, 34.89 m² |
+
+**Sijainti:** `/data/matterport-archive/niittyportti-2-a21/`
+**Web:** `http://100.119.209.125:3000/videos/niittyportti-2-a21-tour-web.mp4`
+
+---
+
 ## Tulevat kehitysideat
 
-### Video + Matterport -hybridi
+### Video-modalin integrointi
 
-Suunnitelma Matterport-riippuvuuden vähentämiseksi:
+Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 
-1. **Nauhoita Matterport-kierrokset videoiksi** (screen recording / MP export)
-2. **Näytä video oletuksena** modalissa - nopea, hallittu, toimii aina
-3. **"Tutki itse 3D:nä"** -nappi avaa Matterportin (valinnainen)
-4. **Myöhemmin** voidaan lopettaa Matterport-tilaus
-
-**Hyödyt:**
-- Ei riippuvuutta MP:n parametreista/toiminnallisuudesta
-- Tasainen käyttökokemus kaikille
-- Nopea lataus (video CDN:stä)
-- Täysi hallinta sisältöön
-
-**Toteutus:** Puppeteer/Playwright-automaatio nauhoittamaan kierrokset.
+1. Modalissa näytetään video oletuksena
+2. "Tutki itse 3D:nä" -nappi avaa Matterportin (valinnainen)
+3. Kun kaikki kohteet prosessoitu → Matterport-tilaus voidaan lopettaa
 
 ---
 
 ## Muutosloki
+
+### 🏆 2026-02-05: Matterport Data Extraction (KULTA)
+
+**Strateginen läpimurto:** Matterport-datan omistaminen ilman tilin hallintaa.
+
+**Toteutettu:**
+- Matterport API:n reverse-engineering → kuvien ja metadatan ekstraktointi
+- FFmpeg-putki: Ken Burns -efekti + crossfade → ammattimainen video
+- Ensimmäinen kohde prosessoitu: Niittyportti 2 A21
+  - 14 kuvaa @ 7680×4320 (30 MB)
+  - 3 videoversiota (MP4 master, MP4 web, WebM)
+  - Huonemitat ja metadata talteen
+
+**Tiedostot:**
+- `/data/matterport-archive/niittyportti-2-a21/` - Arkisto
+- `/public/videos/` - Web-videot
+
+**Hyöty:** Matterport-tilaus voidaan lopettaa kun kaikki kohteet prosessoitu.
 
 ### 2026-02-05: Matterport-modali + 3D-badge
 
