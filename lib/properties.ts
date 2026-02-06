@@ -27,6 +27,8 @@ export interface Property {
   yearBuilt?: number
   highlights?: string[]
   description?: string
+  // Video tour
+  videoUrl?: string
   // Master/Slave
   masterId?: string
 }
@@ -66,6 +68,17 @@ export interface RawProperty {
 }
 
 export const MATTERPORT_BASE = "https://my.matterport.com/show"
+
+// Matterport ID → video file mapping (Ken Burns videos from extracted images)
+const MATTERPORT_VIDEO_MAP: Record<string, string> = {
+  "yT6twx42vuJ": "/videos/kilterinrinne-3-a-tour-web.mp4",
+  "QgLMeLZmCfv": "/videos/kilterinrinne-3-b-tour-web.mp4",
+  "QbpBYmj8zw4": "/videos/tyonjohtajankatu-5-as6-tour-web.mp4",
+  "EuJFUDWy9UX": "/videos/tyonjohtajankatu-5-as7-tour-web.mp4",
+  "Mf7ndzm5V1v": "/videos/tyonjohtajankatu-5-as16-tour-web.mp4",
+  "SQMmpYKKQ7L": "/videos/niittyportti-2-a21-tour-web.mp4",
+  "H2LtzgaK7Ve": "/videos/laajaniitynkuja-7-d-tour-web.mp4",
+}
 
 export function matterportEmbedUrl(modelId: string): string {
   return `${MATTERPORT_BASE}/?m=${modelId}`
@@ -121,6 +134,7 @@ function formatAvailableDate(isoDate: string | null | undefined): string | undef
 
 function transformRawProperty(raw: RawProperty): Property {
   const matterportUrl = raw.matterport ? `${MATTERPORT_BASE}/?m=${raw.matterport}` : undefined
+  const videoUrl = raw.matterport ? MATTERPORT_VIDEO_MAP[raw.matterport] : undefined
   const status = raw.status === "available" ? "available" : "upcoming"
   const availableDate = formatAvailableDate(raw.available_date)
   const addressParts = raw.address.split(/\s+\d{5}\s+/)
@@ -144,6 +158,7 @@ function transformRawProperty(raw: RawProperty): Property {
     availableDate,
     neighborhood: raw.neighborhood || undefined,
     matterportUrl,
+    videoUrl,
     gallery: gallery.length ? gallery : undefined,
     public: raw.public,
     floor: raw.floor || undefined,
@@ -167,6 +182,7 @@ function applyMasterToSlave(slave: Property, master: Property): Property {
     balcony: slave.balcony ?? master.balcony,
     yearBuilt: slave.yearBuilt || master.yearBuilt,
     matterportUrl: slave.matterportUrl || master.matterportUrl,
+    videoUrl: slave.videoUrl || master.videoUrl,
     highlights: (slave.highlights && slave.highlights.length > 0) ? slave.highlights : master.highlights,
     description: slave.description || master.description,
   }

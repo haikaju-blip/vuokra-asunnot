@@ -40,12 +40,24 @@ page.tsx (server)
     └── ContactModal (client) - yhteydenottolomake
 
 kohde/[id]/page.tsx (server) + generateMetadata
-└── PropertyPageClient (client) - galleria, Matterport
+└── PropertyPageClient (client) - galleria, Matterport, videokierros
     ├── KeyFactsBar
     ├── HighlightsPills
     ├── ContactCTACard
     ├── LocationSection (kartta)
     └── MobileCTABar
+
+tour/[kohde]/page.tsx (server) + generateMetadata
+└── TourPageClient (client)
+    └── PanoramaViewer (client) - PSV 360° viewer
+        ├── CubemapAdapter (Matterport skyboxit)
+        └── VirtualTourPlugin (navigointi pisteiden välillä)
+
+admin/video/[kohde]/page.tsx (client)
+└── Kuvavalinta + drag & drop + video-generointi
+
+admin/tour/[kohde]/page.tsx (client)
+└── Sweep-hallinta: piilotus, labelit, aloituspiste, stitching
 ```
 
 ---
@@ -364,19 +376,35 @@ apps/esittely/
 │   ├── layout.tsx            # Root layout + metadata
 │   ├── globals.css           # Tailwind + ELEA-teema
 │   ├── kohde/[id]/page.tsx   # Kohdesivu (SSG + metadata)
+│   ├── tour/[kohde]/         # 360° virtuaalikierros
+│   │   ├── page.tsx          # Tour-sivu (server, metadata)
+│   │   └── tour-page-client.tsx  # Client wrapper
 │   ├── meista/page.tsx
 │   ├── admin/
-│   │   └── properties/[id]/page.tsx  # Kohteen muokkaus + master/slave
+│   │   ├── properties/[id]/page.tsx  # Kohteen muokkaus + master/slave
+│   │   ├── tour/[kohde]/page.tsx     # 360° tour hallinta
+│   │   └── video/[kohde]/page.tsx    # Videokuvien valinta + generointi
 │   └── api/
 │       ├── contact/route.ts           # Yhteydenottolomake
 │       ├── properties/related/[id]/   # Saman talon kohteet
-│       └── admin/properties/[id]/     # Admin API
+│       ├── admin/properties/[id]/     # Admin API
+│       ├── tour/[kohde]/              # Tour data API
+│       │   ├── route.ts              # GET tour data (sweeps, config)
+│       │   └── panorama/route.ts     # GET panoraamakuva (cubemap/equirect)
+│       ├── admin/tour/[kohde]/        # Admin tour API
+│       │   ├── route.ts              # GET/PUT tour config
+│       │   └── stitch/route.ts       # POST/GET stitching
+│       └── admin/video/[kohde]/       # Admin video API
+│           ├── route.ts              # GET kuvalista, PUT valinta
+│           ├── thumbnail/route.ts    # GET kuva-thumbnail
+│           └── generate/route.ts     # POST/GET video-generointi
 ├── components/
 │   ├── property-card.tsx     # Kortti + karuselli + 3D-badge
 │   ├── property-grid.tsx
 │   ├── property-list-client.tsx  # Filtteröinti + modalit
 │   ├── contact-modal.tsx     # Yhteydenottolomake (modal)
 │   ├── matterport-modal.tsx  # 3D-kierros modaalissa
+│   ├── panorama-viewer.tsx   # PSV 360° viewer (cubemap + equirect)
 │   ├── property-page-client.tsx  # Kohdesivun client-logiikka
 │   ├── filter-bar.tsx
 │   ├── contact-cta-card.tsx
@@ -386,13 +414,20 @@ apps/esittely/
 │   ├── mobile-cta-bar.tsx
 │   └── property-map.tsx      # Leaflet-kartta
 ├── lib/
-│   ├── properties.ts         # Tyypit + master/slave periytyminen
+│   ├── properties.ts         # Tyypit + master/slave periytyminen + videoUrl
+│   ├── tour-data.ts          # 360° tour tyypit + data loading
 │   ├── utils.ts              # cn() helper
 │   ├── auth.ts               # NextAuth
 │   └── db/                   # Drizzle ORM
 ├── docs/
 │   └── YHTEYDENOTTO-SUUNNITELMA.md  # Lomakkeen suunnittelu
 └── middleware.ts             # Auth + Tailscale
+
+scripts/ (repon ulkopuolella: /opt/vuokra-platform/scripts/)
+├── extract-matterport.sh         # Matterport-datan ekstraktointi
+├── extract-matterport-batch.py   # Batch-ekstraktointi
+├── generate-tour-video.sh        # Ken Burns -video valituista kuvista
+└── stitch-panorama.sh            # Hugin CLI panoraama-stitching
 ```
 
 ---
@@ -544,6 +579,81 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 ---
 
 ## Muutosloki
+
+### 2026-02-06: 360° Panoraama-esittelyjärjestelmä + Videokierrokset
+
+**Kolme uutta järjestelmää toteutettu:**
+
+#### 1) 360° virtuaalikierros (Photo Sphere Viewer)
+
+Oma interaktiivinen 360° kierros Matterport-skybox-datasta, ilman Matterport-tililiä.
+
+- **Photo Sphere Viewer 5.14.1** + CubemapAdapter + VirtualTourPlugin
+- Tukee kahta kuvalähdettä: Matterport cubemap (6 sivua × 4 resoluutiota) ja omat equirectangular panoraamat
+- Matterport skybox face mapping: `skybox0=top, 1=front, 2=left, 3=back, 4=right, 5=bottom`
+- Naapurilaskenta: max 3m etäisyys, yaw = `atan2(dx, dy)`
+- Ensimmäinen kohde: kilterinrinne-3-a28 (18 sweep-pistettä, 4 huonetta)
+
+**Reitit:**
+
+| Reitti | Tarkoitus |
+|--------|-----------|
+| `/tour/[kohde]` | Julkinen 360° kierros |
+| `/api/tour/[kohde]` | Tour data (sweeps, config) |
+| `/api/tour/[kohde]/panorama` | Cubemap face / equirect kuva |
+| `/admin/tour/[kohde]` | Admin: piilotus, labelit, aloituspiste |
+
+**Tiedostot:**
+- `components/panorama-viewer.tsx` — PSV viewer ("use client", dynamic import)
+- `lib/tour-data.ts` — Tyypit, loadTourData(), config management
+- `app/tour/[kohde]/page.tsx` — Server component + SEO metadata
+- `app/admin/tour/[kohde]/page.tsx` — Admin sweep-hallinta
+
+**Datasijainti:** `/srv/shared/DROPZONE/{kohde}/space-data.json` + `panoramas/2k/` + `tour-config.json`
+
+#### 2) Videokierrosten näyttäminen kohdesivulla
+
+Ken Burns -videot kytketty kohdesivulle Matterport-iframen rinnalle.
+
+- `lib/properties.ts`: `videoUrl` Property-tyyppiin + Matterport ID → video mapping (7 kohdetta)
+- `components/property-page-client.tsx`: "Virtuaalikierros"-osio: videokierros + 3D-kierros
+- Video periiytyy master/slave -mallilla saman rakennuksen asunnoille
+- `<video>` -elementti natiivilla HTML5-soittimella (controls, playsInline)
+
+**Video mapping:**
+
+| Matterport ID | Video |
+|---------------|-------|
+| yT6twx42vuJ | kilterinrinne-3-a |
+| QgLMeLZmCfv | kilterinrinne-3-b |
+| QbpBYmj8zw4 | tyonjohtajankatu-5-as6 |
+| EuJFUDWy9UX | tyonjohtajankatu-5-as7 |
+| Mf7ndzm5V1v | tyonjohtajankatu-5-as16 |
+| SQMmpYKKQ7L | niittyportti-2-a21 |
+| H2LtzgaK7Ve | laajaniitynkuja-7-d |
+
+#### 3) Admin: videokuvien valinta ja generointi
+
+Admin-sivu videokuvien valintaan, järjestämiseen (drag & drop) ja videon uudelleengenerointiin.
+
+- `/admin/video/[kohde]` — kuvagrid, valinta/poisto, drag & drop järjestys
+- Valinta tallennetaan: `matterport-archive/{kohde}/video-config.json`
+- "Generoi video" -nappi ajaa `scripts/generate-tour-video.sh` valituilla kuvilla
+- Max 12 kuvaa per video (= 60s), yli menevät näkyvät punaisella badgella
+- Edistymisen seuranta + valmiin videon esikatselu
+
+**Skripti:** `scripts/generate-tour-video.sh <kohde> <kuva1> <kuva2> ...`
+- Ken Burns clips (zoompan, 5s/kuva, vuorotteleva zoom in/out)
+- Crossfade xfade (0.5s fades, hardcoded offsets — bc ei asennettu)
+- Web-versio (CRF 23, faststart) → `public/videos/{kohde}-tour-web.mp4`
+
+#### Stitching-pipeline (S25 Ultra -kuville)
+
+- `scripts/stitch-panorama.sh` — Hugin CLI: pto_gen → cpfind → autooptimiser → nona → JPEG
+- Admin-integraatio: `/admin/tour/[kohde]` sisältää stitching-hallinnan
+- API: `POST /api/admin/tour/[kohde]/stitch` käynnistää, `GET` seuraa tilaa
+
+---
 
 ### 🏆 2026-02-05: Matterport Data Extraction - VALMIS
 
