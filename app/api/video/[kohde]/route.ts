@@ -56,14 +56,20 @@ export async function GET(
     await fileHandle.read(buffer, 0, fileSize, 0)
     await fileHandle.close()
 
-    return new NextResponse(buffer, {
-      headers: {
-        "Content-Length": String(fileSize),
-        "Content-Type": "video/mp4",
-        "Accept-Ranges": "bytes",
-        "Cache-Control": "public, max-age=3600",
-      },
-    })
+    const isDownload = request.nextUrl.searchParams.get("download") === "1"
+
+    const headers: Record<string, string> = {
+      "Content-Length": String(fileSize),
+      "Content-Type": "video/mp4",
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "public, max-age=3600",
+    }
+
+    if (isDownload) {
+      headers["Content-Disposition"] = `attachment; filename="${kohde}-videokierros.mp4"`
+    }
+
+    return new NextResponse(buffer, { headers })
   } catch (error) {
     console.error("Video serve error:", error)
     return NextResponse.json({ error: "Palvelinvirhe" }, { status: 500 })

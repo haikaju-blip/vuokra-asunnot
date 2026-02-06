@@ -264,9 +264,21 @@ export default function AdminVideoPage({
         </div>
         <div className="flex items-center gap-3">
           {hasVideo && (
-            <span className="text-xs text-green-600">
-              Video olemassa ({formatSize(videoSize)})
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-green-600">
+                Video olemassa ({formatSize(videoSize)})
+              </span>
+              <a
+                href={`/api/video/${kohde}?download=1`}
+                download
+                className="text-xs px-2 py-1 rounded border border-elea-border hover:bg-secondary transition flex items-center gap-1"
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3" />
+                </svg>
+                Lataa
+              </a>
+            </div>
           )}
           <button
             onClick={handleSave}

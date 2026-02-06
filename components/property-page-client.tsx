@@ -229,7 +229,19 @@ export function PropertyPageClient({ property }: PropertyPageClientProps) {
                 {/* Video tour */}
                 {videoUrl && (
                   <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Videokierros</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">Videokierros</h3>
+                      <a
+                        href={`${videoUrl}?download=1`}
+                        download
+                        className="text-xs text-elea-text-muted hover:text-elea-navy transition flex items-center gap-1"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5m0 0l5-5m-5 5V3" />
+                        </svg>
+                        Lataa video
+                      </a>
+                    </div>
                     <div className="rounded-[16px] overflow-hidden border border-border/70 bg-black aspect-video relative">
                       <video
                         src={videoUrl}
