@@ -71,13 +71,13 @@ export const MATTERPORT_BASE = "https://my.matterport.com/show"
 
 // Matterport ID → video file mapping (Ken Burns videos from extracted images)
 const MATTERPORT_VIDEO_MAP: Record<string, string> = {
-  "yT6twx42vuJ": "/videos/kilterinrinne-3-a-tour-web.mp4",
-  "QgLMeLZmCfv": "/videos/kilterinrinne-3-b-tour-web.mp4",
-  "QbpBYmj8zw4": "/videos/tyonjohtajankatu-5-as6-tour-web.mp4",
-  "EuJFUDWy9UX": "/videos/tyonjohtajankatu-5-as7-tour-web.mp4",
-  "Mf7ndzm5V1v": "/videos/tyonjohtajankatu-5-as16-tour-web.mp4",
-  "SQMmpYKKQ7L": "/videos/niittyportti-2-a21-tour-web.mp4",
-  "H2LtzgaK7Ve": "/videos/laajaniitynkuja-7-d-tour-web.mp4",
+  "yT6twx42vuJ": "/api/video/kilterinrinne-3-a",
+  "QgLMeLZmCfv": "/api/video/kilterinrinne-3-b",
+  "QbpBYmj8zw4": "/api/video/tyonjohtajankatu-5-as6",
+  "EuJFUDWy9UX": "/api/video/tyonjohtajankatu-5-as7",
+  "Mf7ndzm5V1v": "/api/video/tyonjohtajankatu-5-as16",
+  "SQMmpYKKQ7L": "/api/video/niittyportti-2-a21",
+  "H2LtzgaK7Ve": "/api/video/laajaniitynkuja-7-d",
 }
 
 export function matterportEmbedUrl(modelId: string): string {

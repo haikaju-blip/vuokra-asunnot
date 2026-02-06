@@ -322,7 +322,7 @@ export default function AdminVideoPage({
           {genStatus === "completed" && (
             <div className="mt-3">
               <video
-                src={`/videos/${kohde}-tour-web.mp4?t=${Date.now()}`}
+                src={`/api/video/${kohde}?t=${Date.now()}`}
                 controls
                 playsInline
                 className="w-full max-w-lg rounded-lg"
@@ -471,7 +471,7 @@ export default function AdminVideoPage({
             Nykyinen video
           </h2>
           <video
-            src={`/videos/${kohde}-tour-web.mp4`}
+            src={`/api/video/${kohde}`}
             controls
             playsInline
             preload="metadata"
