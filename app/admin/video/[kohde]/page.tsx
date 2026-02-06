@@ -238,7 +238,7 @@ export default function AdminVideoPage({
     )
   }
 
-  const estimatedDuration = Math.min(selected.length, 12) * 5
+  const estimatedDuration = Math.min(selected.length, 20) * 5
   const formatSize = (bytes: number) => {
     if (bytes > 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
     return `${(bytes / 1024).toFixed(0)} KB`
@@ -341,7 +341,7 @@ export default function AdminVideoPage({
           Poista valinnat
         </button>
         <span className="text-xs text-elea-text-light">
-          Raahaa kuvia vaihtaaksesi järjestystä. Max 12 kuvaa videossa.
+          Raahaa kuvia vaihtaaksesi järjestystä. Max 20 kuvaa videossa.
         </span>
       </div>
 
@@ -349,15 +349,15 @@ export default function AdminVideoPage({
       <div className="mb-8">
         <h2 className="text-sm font-semibold text-elea-navy uppercase tracking-wide mb-3">
           Valitut kuvat ({selected.length})
-          {selected.length > 12 && (
+          {selected.length > 20 && (
             <span className="text-xs font-normal normal-case text-elea-warm ml-2">
-              Vain 12 ensimmäistä käytetään videossa
+              Vain 20 ensimmäistä käytetään videossa
             </span>
           )}
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {selected.map((filename, index) => {
-            const isOverLimit = index >= 12
+            const isOverLimit = index >= 20
             const isDragging = dragIndex === index
             const isDragOver = dragOverIndex === index
 
