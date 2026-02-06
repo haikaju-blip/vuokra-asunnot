@@ -22,15 +22,31 @@ export async function GET(
       return NextResponse.json({ error: "Kohdetta ei löydy" }, { status: 404 })
     }
 
-    // Matterport cubemap: ?scan={id}&face={0-5}&res=2k
+    // Matterport panorama: ?scan={id} (equirectangular) or ?scan={id}&face={0-5}&res=2k (cubemap)
     const scanId = searchParams.get("scan")
     const face = searchParams.get("face")
     const res = searchParams.get("res") || "2k"
 
-    if (scanId && face !== null) {
+    if (scanId) {
       // Validate scan ID (hex string)
       if (!/^[a-f0-9]+$/.test(scanId)) {
         return NextResponse.json({ error: "Virheellinen scan ID" }, { status: 400 })
+      }
+
+      // If no face specified, serve equirectangular panorama
+      if (face === null) {
+        const equirectPath = join(kohdeDir, "panoramas", "equirect", `${scanId}.jpg`)
+        if (!existsSync(equirectPath)) {
+          return NextResponse.json({ error: "Equirectangular-panoraamaa ei löydy" }, { status: 404 })
+        }
+
+        const data = await readFile(equirectPath)
+        return new NextResponse(data, {
+          headers: {
+            "Content-Type": "image/jpeg",
+            "Cache-Control": "public, max-age=31536000, immutable",
+          },
+        })
       }
 
       const faceNum = parseInt(face, 10)

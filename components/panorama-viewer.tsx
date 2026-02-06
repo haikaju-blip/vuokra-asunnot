@@ -3,26 +3,10 @@
 import { useEffect, useRef, useState, useCallback } from "react"
 import type { TourData, TourSweep } from "@/lib/tour-data"
 
-// PSV CSS
-import "@photo-sphere-viewer/core/index.css"
-import "@photo-sphere-viewer/markers-plugin/index.css"
-import "@photo-sphere-viewer/virtual-tour-plugin/index.css"
-
-// Matterport skybox face mapping: skybox0=top, 1=front, 2=left, 3=back, 4=right, 5=bottom
-function buildCubemapUrls(kohde: string, scanId: string, res: string = "2k") {
-  const base = `/api/tour/${kohde}/panorama?scan=${scanId}&res=${res}`
-  return {
-    top: `${base}&face=0`,
-    front: `${base}&face=1`,
-    left: `${base}&face=2`,
-    back: `${base}&face=3`,
-    right: `${base}&face=4`,
-    bottom: `${base}&face=5`,
+declare global {
+  interface Window {
+    pannellum: any
   }
-}
-
-function buildEquirectangularUrl(kohde: string, file: string) {
-  return `/api/tour/${kohde}/panorama?file=${encodeURIComponent(file)}`
 }
 
 interface PanoramaViewerProps {
@@ -39,6 +23,30 @@ export function PanoramaViewer({ kohde, onBack }: PanoramaViewerProps) {
   const [currentSweep, setCurrentSweep] = useState<TourSweep | null>(null)
   const [sweepIndex, setSweepIndex] = useState(0)
   const [totalSweeps, setTotalSweeps] = useState(0)
+  const [pannellumReady, setPannellumReady] = useState(false)
+
+  // Load Pannellum from CDN
+  useEffect(() => {
+    if (window.pannellum) {
+      setPannellumReady(true)
+      return
+    }
+
+    const link = document.createElement("link")
+    link.rel = "stylesheet"
+    link.href = "https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.css"
+    document.head.appendChild(link)
+
+    const script = document.createElement("script")
+    script.src = "https://cdn.jsdelivr.net/npm/pannellum@2.5.6/build/pannellum.js"
+    script.onload = () => setPannellumReady(true)
+    document.head.appendChild(script)
+
+    return () => {
+      document.head.removeChild(link)
+      document.head.removeChild(script)
+    }
+  }, [])
 
   // Load tour data
   useEffect(() => {
@@ -58,148 +66,119 @@ export function PanoramaViewer({ kohde, onBack }: PanoramaViewerProps) {
       })
   }, [kohde])
 
-  // Initialize PSV viewer
-  useEffect(() => {
-    if (!tourData || !containerRef.current || tourData.sweeps.length === 0) return
+  // Handle scene change
+  const handleSceneChange = useCallback(
+    (sceneId: string) => {
+      if (!tourData) return
+      const sweep = tourData.sweeps.find((s) => s.id === sceneId)
+      if (sweep) {
+        setCurrentSweep(sweep)
+        setSweepIndex(tourData.sweeps.indexOf(sweep) + 1)
+      }
+    },
+    [tourData]
+  )
 
-    // Capture for closure
+  // Initialize Pannellum viewer
+  useEffect(() => {
+    if (!pannellumReady || !tourData || !containerRef.current || tourData.sweeps.length === 0) return
+
     const data = tourData
 
-    let viewer: any = null
-    let destroyed = false
+    // Build Pannellum scenes
+    const scenes: Record<string, any> = {}
 
-    async function init() {
-      // Dynamic imports to avoid SSR issues
-      const { Viewer } = await import("@photo-sphere-viewer/core")
-      const { CubemapAdapter } = await import("@photo-sphere-viewer/cubemap-adapter")
-      const { VirtualTourPlugin } = await import("@photo-sphere-viewer/virtual-tour-plugin")
-      const { MarkersPlugin } = await import("@photo-sphere-viewer/markers-plugin")
-
-      if (destroyed || !containerRef.current) return
-
-      // Determine if we need cubemap adapter
-      const hasCubemap = data.sweeps.some((s) => s.type === "cubemap")
-
-      // Build PSV nodes from tour sweeps
-      const nodes = data.sweeps.map((sweep) => {
-        // Build panorama data based on type
-        let panorama: any
-        if (sweep.type === "cubemap" && sweep.scanId) {
-          panorama = buildCubemapUrls(kohde, sweep.scanId, "2k")
-        } else if (sweep.panoramaFile) {
-          panorama = buildEquirectangularUrl(kohde, sweep.panoramaFile)
-        }
-
-        // Build links from neighbors
-        const links = sweep.neighbors
-          .filter((nId) => data.sweeps.find((s) => s.id === nId))
-          .map((neighborId) => {
-            const neighbor = data.sweeps.find((s) => s.id === neighborId)!
-            const dx = neighbor.position.x - sweep.position.x
-            const dy = neighbor.position.y - sweep.position.y
-            const yaw = Math.atan2(dx, dy)
-
-            return {
-              nodeId: neighborId,
-              position: { yaw, pitch: -0.1 },
-            }
-          })
-
-        // Thumbnail: use cubemap front face or equirectangular
-        let thumbnail: string | undefined
-        if (sweep.type === "cubemap" && sweep.scanId) {
-          thumbnail = `/api/tour/${kohde}/panorama?scan=${sweep.scanId}&res=low&face=1`
-        }
-
-        return {
-          id: sweep.id,
-          panorama,
-          name: sweep.label,
-          caption: sweep.label,
-          thumbnail,
-          links,
-        }
-      })
-
-      const startNodeId =
-        data.config.startSweep &&
-        nodes.find((n) => n.id === data.config.startSweep)
-          ? data.config.startSweep
-          : nodes[0]?.id
-
-      // Create viewer
-      const plugins: any[] = [
-        MarkersPlugin,
-        [
-          VirtualTourPlugin,
-          {
-            dataMode: "client",
-            positionMode: "manual",
-            renderMode: "3d",
-            nodes,
-            startNodeId,
-            preload: true,
-            transitionOptions: {
-              showLoader: true,
-              speed: "20rpm",
-              effect: "fade",
-              rotation: true,
-            },
-          },
-        ],
-      ]
-
-      viewer = new Viewer({
-        container: containerRef.current!,
-        adapter: hasCubemap ? CubemapAdapter : undefined,
-        plugins,
-        navbar: false,
-        loadingTxt: "Ladataan...",
-        touchmoveTwoFingers: false,
-        mousewheelCtrlKey: false,
-        defaultYaw: 0,
-        defaultPitch: 0,
-      })
-
-      viewerRef.current = viewer
-
-      // Track node changes
-      const virtualTour = viewer.getPlugin(VirtualTourPlugin) as any
-      if (virtualTour) {
-        virtualTour.addEventListener("node-changed", (e: any) => {
-          const nodeId = e.node?.id
-          const sweep = data.sweeps.find((s) => s.id === nodeId)
-          if (sweep) {
-            setCurrentSweep(sweep)
-            setSweepIndex(data.sweeps.indexOf(sweep) + 1)
-          }
-        })
+    for (const sweep of data.sweeps) {
+      let panoramaUrl: string
+      if (sweep.type === "cubemap" && sweep.scanId) {
+        panoramaUrl = `/api/tour/${kohde}/panorama?scan=${sweep.scanId}`
+      } else if (sweep.panoramaFile) {
+        panoramaUrl = `/api/tour/${kohde}/panorama?file=${encodeURIComponent(sweep.panoramaFile)}`
+      } else {
+        continue
       }
 
-      // Set initial sweep
-      const startSweep = data.sweeps.find((s) => s.id === startNodeId)
-      if (startSweep) {
-        setCurrentSweep(startSweep)
-        setSweepIndex(data.sweeps.indexOf(startSweep) + 1)
+      // Build hotspots for navigation to neighbors
+      const hotSpots = sweep.neighbors
+        .filter((nId) => data.sweeps.find((s) => s.id === nId))
+        .map((neighborId) => {
+          const neighbor = data.sweeps.find((s) => s.id === neighborId)!
+          const dx = neighbor.position.x - sweep.position.x
+          const dy = neighbor.position.y - sweep.position.y
+          const yawRad = Math.atan2(dx, dy)
+          const yawDeg = yawRad * (180 / Math.PI)
+
+          return {
+            pitch: -25,
+            yaw: yawDeg,
+            type: "scene",
+            sceneId: neighborId,
+            text: neighbor.label,
+            cssClass: "tour-hotspot",
+          }
+        })
+
+      scenes[sweep.id] = {
+        type: "equirectangular",
+        panorama: panoramaUrl,
+        title: sweep.label,
+        hotSpots,
+        hfov: 110,
       }
     }
 
-    init()
+    const startNodeId =
+      data.config.startSweep && scenes[data.config.startSweep]
+        ? data.config.startSweep
+        : data.sweeps[0]?.id
+
+    // Set initial sweep
+    const startSweep = data.sweeps.find((s) => s.id === startNodeId)
+    if (startSweep) {
+      setCurrentSweep(startSweep)
+      setSweepIndex(data.sweeps.indexOf(startSweep) + 1)
+    }
+
+    const viewer = window.pannellum.viewer(containerRef.current, {
+      default: {
+        firstScene: startNodeId,
+        sceneFadeDuration: 1000,
+        autoLoad: true,
+        compass: false,
+        showControls: false,
+        showFullscreenCtrl: false,
+        mouseZoom: true,
+        keyboardZoom: true,
+        draggable: true,
+        disableKeyboardCtrl: false,
+        friction: 0.15,
+        touchPanSpeedCoeffFactor: 1,
+        hfov: 110,
+        minHfov: 50,
+        maxHfov: 120,
+      },
+      scenes,
+    })
+
+    viewerRef.current = viewer
+
+    // Listen for scene changes
+    viewer.on("scenechange", (sceneId: string) => {
+      handleSceneChange(sceneId)
+    })
 
     return () => {
-      destroyed = true
-      if (viewer) {
+      if (viewerRef.current) {
         try {
-          viewer.destroy()
+          viewerRef.current.destroy()
         } catch {
           // ignore
         }
       }
       viewerRef.current = null
     }
-  }, [tourData, kohde])
+  }, [pannellumReady, tourData, kohde, handleSceneChange])
 
-  // Loading state
   if (loading) {
     return (
       <div className="fixed inset-0 bg-elea-bg flex items-center justify-center z-50">
@@ -211,7 +190,6 @@ export function PanoramaViewer({ kohde, onBack }: PanoramaViewerProps) {
     )
   }
 
-  // Error state
   if (error || !tourData) {
     return (
       <div className="fixed inset-0 bg-elea-bg flex items-center justify-center z-50">
@@ -235,15 +213,12 @@ export function PanoramaViewer({ kohde, onBack }: PanoramaViewerProps) {
 
   return (
     <div className="fixed inset-0 bg-black z-50">
-      {/* PSV container */}
+      {/* Pannellum container */}
       <div ref={containerRef} className="w-full h-full" />
-
-      {/* Overlay UI */}
 
       {/* Top bar: back button + room name */}
       <div className="absolute top-0 left-0 right-0 z-10 pointer-events-none">
         <div className="flex items-center gap-3 px-4 py-3">
-          {/* Back button */}
           <button
             onClick={onBack}
             className="pointer-events-auto flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black/50 backdrop-blur-sm text-white text-sm hover:bg-black/70 transition"
@@ -254,7 +229,6 @@ export function PanoramaViewer({ kohde, onBack }: PanoramaViewerProps) {
             Takaisin
           </button>
 
-          {/* Room name */}
           {currentSweep && (
             <div className="pointer-events-auto px-3 py-2 rounded-lg bg-black/50 backdrop-blur-sm text-white text-sm font-medium">
               {currentSweep.label}

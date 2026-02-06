@@ -143,3 +143,46 @@ input:focus, textarea:focus, select:focus {
     opacity: 0.4;
   }
 }
+
+/* Pannellum tour hotspot styling */
+.pnlm-hotspot-base.tour-hotspot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(200, 169, 110, 0.85);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: transform 0.2s, background 0.2s;
+}
+.pnlm-hotspot-base.tour-hotspot:hover {
+  transform: scale(1.2);
+  background: rgba(200, 169, 110, 1);
+}
+.pnlm-hotspot-base.tour-hotspot span {
+  display: none;
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  margin-bottom: 6px;
+  pointer-events: none;
+}
+.pnlm-hotspot-base.tour-hotspot:hover span {
+  display: block;
+}
+
+/* Hide Pannellum default UI elements we don't need */
+.pnlm-panorama-info,
+.pnlm-title-box,
+.pnlm-controls-container,
+.pnlm-hot-spot-debug-indicator,
+.pnlm-orientation-button {
+  display: none !important;
+}

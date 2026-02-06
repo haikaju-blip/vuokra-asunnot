@@ -123,6 +123,7 @@ export async function saveTourConfig(kohde: string, config: TourConfig): Promise
 function calculateNeighbors(sweeps: Array<{ id: string; position: { x: number; y: number } }>): Map<string, string[]> {
   const neighbors = new Map<string, string[]>()
   const MAX_DISTANCE = 3.0 // meters
+  const MAX_NEIGHBORS = 4 // max arrows per sweep
 
   for (const sweep of sweeps) {
     const nearby: Array<{ id: string; dist: number }> = []
@@ -132,14 +133,14 @@ function calculateNeighbors(sweeps: Array<{ id: string; position: { x: number; y
       const dx = other.position.x - sweep.position.x
       const dy = other.position.y - sweep.position.y
       const dist = Math.sqrt(dx * dx + dy * dy)
-      if (dist <= MAX_DISTANCE) {
+      if (dist > 0.1 && dist <= MAX_DISTANCE) { // Skip distance 0 (duplicate positions)
         nearby.push({ id: other.id, dist })
       }
     }
 
-    // Sort by distance and take closest
+    // Sort by distance and take closest N
     nearby.sort((a, b) => a.dist - b.dist)
-    neighbors.set(sweep.id, nearby.map((n) => n.id))
+    neighbors.set(sweep.id, nearby.slice(0, MAX_NEIGHBORS).map((n) => n.id))
   }
 
   return neighbors
