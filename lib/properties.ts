@@ -31,12 +31,14 @@ export interface Property {
   videoUrl?: string
   // Master/Slave
   masterId?: string
+  // Media source (archive folder for video/360°)
+  mediaSource?: string
 }
 
 // Fields that inherit from master to slave
 export const INHERITABLE_FIELDS = [
   'area_m2', 'rooms', 'room_layout', 'balcony', 'year_built',
-  'matterport', 'highlights', 'description'
+  'matterport', 'highlights', 'description', 'media_source'
 ] as const
 
 /** Raw property from JSON database */
@@ -65,6 +67,7 @@ export interface RawProperty {
   year_built?: number | null
   highlights?: string[] | null
   description?: string | null
+  media_source?: string | null
 }
 
 export const MATTERPORT_BASE = "https://my.matterport.com/show"
@@ -168,6 +171,7 @@ function transformRawProperty(raw: RawProperty): Property {
     highlights: raw.highlights || undefined,
     description: raw.description || undefined,
     masterId: raw.master_id || undefined,
+    mediaSource: raw.media_source || undefined,
   }
 }
 
@@ -185,6 +189,7 @@ function applyMasterToSlave(slave: Property, master: Property): Property {
     videoUrl: slave.videoUrl || master.videoUrl,
     highlights: (slave.highlights && slave.highlights.length > 0) ? slave.highlights : master.highlights,
     description: slave.description || master.description,
+    mediaSource: slave.mediaSource || master.mediaSource,
   }
 }
 

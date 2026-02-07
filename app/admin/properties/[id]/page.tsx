@@ -31,6 +31,7 @@ interface RawProperty {
   available_date: string | null
   neighborhood: string | null
   master_id: string | null
+  media_source: string | null
 }
 
 // Fields that inherit from master
@@ -106,6 +107,7 @@ export default function PropertyEditPage() {
   const [yearBuilt, setYearBuilt] = useState<number | "">("")
   const [balcony, setBalcony] = useState<boolean | null>(null)
   const [matterport, setMatterport] = useState("")
+  const [mediaSource, setMediaSource] = useState("")
   const [availableDate, setAvailableDate] = useState("")
   const [neighborhood, setNeighborhood] = useState("")
   const [highlights, setHighlights] = useState<string[]>([])
@@ -169,6 +171,7 @@ export default function PropertyEditPage() {
         setYearBuilt(data.year_built || "")
         setBalcony(data.balcony)
         setMatterport(data.matterport || "")
+        setMediaSource(data.media_source || "")
         setAvailableDate(data.available_date || "")
         setNeighborhood(data.neighborhood || "")
         setHighlights(data.highlights || [])
@@ -186,6 +189,7 @@ export default function PropertyEditPage() {
           yearBuilt: data.year_built || "",
           balcony: data.balcony,
           matterport: data.matterport || "",
+          mediaSource: data.media_source || "",
           availableDate: data.available_date || "",
           neighborhood: data.neighborhood || "",
           highlights: data.highlights || [],
@@ -205,12 +209,12 @@ export default function PropertyEditPage() {
 
     const currentValues = {
       status, isPublic, rent, areaM2, rooms, roomLayout, floor, totalFloors, yearBuilt,
-      balcony, matterport, availableDate, neighborhood, highlights, description, notes, masterId
+      balcony, matterport, mediaSource, availableDate, neighborhood, highlights, description, notes, masterId
     }
 
     const dirty = JSON.stringify(currentValues) !== JSON.stringify(originalValues)
     setIsDirty(dirty)
-  }, [status, isPublic, rent, areaM2, rooms, roomLayout, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, neighborhood, highlights, description, notes, masterId, originalValues])
+  }, [status, isPublic, rent, areaM2, rooms, roomLayout, floor, totalFloors, yearBuilt, balcony, matterport, mediaSource, availableDate, neighborhood, highlights, description, notes, masterId, originalValues])
 
   // Save handler
   const handleSave = useCallback(async () => {
@@ -231,6 +235,7 @@ export default function PropertyEditPage() {
       year_built: yearBuilt === "" ? null : Number(yearBuilt),
       balcony,
       matterport: matterport || null,
+      media_source: mediaSource || null,
       available_date: availableDate || null,
       neighborhood: neighborhood || null,
       highlights: highlights.length > 0 ? highlights : null,
@@ -250,7 +255,7 @@ export default function PropertyEditPage() {
         setSaveState("saved")
         setOriginalValues({
           status, isPublic, rent, areaM2, rooms, roomLayout, floor, totalFloors, yearBuilt,
-          balcony, matterport, availableDate, neighborhood, highlights, description, notes, masterId
+          balcony, matterport, mediaSource, availableDate, neighborhood, highlights, description, notes, masterId
         })
         setIsDirty(false)
         setTimeout(() => setSaveState("idle"), 2000)
@@ -264,7 +269,7 @@ export default function PropertyEditPage() {
     }
 
     setSaving(false)
-  }, [isDirty, saving, status, isPublic, rent, areaM2, rooms, roomLayout, floor, totalFloors, yearBuilt, balcony, matterport, availableDate, neighborhood, highlights, description, notes, masterId, propertyId])
+  }, [isDirty, saving, status, isPublic, rent, areaM2, rooms, roomLayout, floor, totalFloors, yearBuilt, balcony, matterport, mediaSource, availableDate, neighborhood, highlights, description, notes, masterId, propertyId])
 
   // Auto-save: tallenna 2s kuluttua muutoksesta
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -676,6 +681,20 @@ export default function PropertyEditPage() {
                     placeholder="ID"
                   />
                 </div>
+
+                <div className="col-span-2">
+                  <label className="block text-[11px] text-muted-foreground mb-1">Mediakansio</label>
+                  <select
+                    value={mediaSource}
+                    onChange={(e) => setMediaSource(e.target.value)}
+                    className="w-full px-2.5 py-1.5 text-sm rounded-[8px] border border-border bg-background focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                  >
+                    <option value="">Oma ({property.id})</option>
+                    {relatedProperties.map(rel => (
+                      <option key={rel.id} value={rel.id}>{rel.id}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -895,6 +914,54 @@ export default function PropertyEditPage() {
               </Link>
             </div>
 
+            {/* Quick actions */}
+            <div className="border-t border-border pt-4">
+              <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-3">Toiminnot</h2>
+              <div className="space-y-2">
+                <Link
+                  href={`/kohde/${property.id}`}
+                  target="_blank"
+                  className="flex items-center justify-between px-3 py-2 rounded-[8px] border border-border hover:bg-secondary transition text-sm"
+                >
+                  <span>Julkinen sivu</span>
+                  <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </Link>
+                <Link
+                  href={`/admin/video/${mediaSource || property.id}`}
+                  className="flex items-center justify-between px-3 py-2 rounded-[8px] border border-border hover:bg-secondary transition text-sm"
+                >
+                  <span>Videokierros</span>
+                  <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </Link>
+                <Link
+                  href={`/admin/tour/${mediaSource || property.id}`}
+                  className="flex items-center justify-between px-3 py-2 rounded-[8px] border border-border hover:bg-secondary transition text-sm"
+                >
+                  <span>360° kierros</span>
+                  <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </Link>
+                {property.matterport && (
+                  <a
+                    href={`https://my.matterport.com/show/?m=${property.matterport}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between px-3 py-2 rounded-[8px] border border-border hover:bg-secondary transition text-sm"
+                  >
+                    <span>Avaa 3D-kierros</span>
+                    <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
+              </div>
+            </div>
+
             {/* Master/Slave Status */}
             <div className="border-t border-border pt-4">
               <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-3">Periytyminen</h2>
@@ -998,36 +1065,6 @@ export default function PropertyEditPage() {
                   <dd className="font-mono text-xs">#{property.db_id}</dd>
                 </div>
               </dl>
-            </div>
-
-            {/* Quick actions */}
-            <div className="border-t border-border pt-4">
-              <h2 className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-3">Toiminnot</h2>
-              <div className="space-y-2">
-                <Link
-                  href={`/kohde/${property.id}`}
-                  target="_blank"
-                  className="flex items-center justify-between px-3 py-2 rounded-[8px] border border-border hover:bg-secondary transition text-sm"
-                >
-                  <span>Julkinen sivu</span>
-                  <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </Link>
-                {property.matterport && (
-                  <a
-                    href={`https://my.matterport.com/show/?m=${property.matterport}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between px-3 py-2 rounded-[8px] border border-border hover:bg-secondary transition text-sm"
-                  >
-                    <span>Avaa 3D-kierros</span>
-                    <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                    </svg>
-                  </a>
-                )}
-              </div>
             </div>
 
             {/* Keyboard shortcuts help */}

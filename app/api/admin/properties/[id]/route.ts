@@ -28,6 +28,7 @@ interface RawProperty {
   description: string | null
   available_date: string | null
   neighborhood: string | null
+  media_source: string | null
 }
 
 const PROPERTIES_PATH = path.join(process.cwd(), '..', '..', 'data', 'properties.json')
@@ -85,7 +86,7 @@ export async function PUT(
   const allowedFields = [
     'status', 'public', 'rent', 'area_m2', 'rooms', 'room_layout', 'floor', 'total_floors',
     'year_built', 'balcony', 'matterport', 'available_date', 'neighborhood',
-    'highlights', 'description', 'notes', 'master_id'
+    'highlights', 'description', 'notes', 'master_id', 'media_source'
   ]
 
   for (const field of allowedFields) {

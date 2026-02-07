@@ -284,7 +284,7 @@ fetchProperty(id): Promise<Property | null>
 
 // Periytyvät kentät master → slave
 INHERITABLE_FIELDS = ['area_m2', 'rooms', 'room_layout', 'balcony',
-                      'year_built', 'matterport', 'highlights', 'description']
+                      'year_built', 'matterport', 'highlights', 'description', 'media_source']
 ```
 
 ### Master/Slave -malli
@@ -309,6 +309,24 @@ Slave (Isokatu 60 B3)
 - "Periytyminen"-osio näyttää master/slave-tilan
 - SLAVE: näyttää masterin, "Irrota masterista" -nappi
 - ITSENÄINEN: lista saman talon kohteista, klikkaa asettaaksesi masteriksi
+
+### Mediakansio (`media_source`)
+
+Kohteen video- ja 360°-materiaalit haetaan matterport-arkistokansiosta (`/data/matterport-archive/{kohde}/`). Kansionimi ei aina vastaa kohteen ID:tä (esim. kohde `niittyportti-2-a20` käyttää kansiota `niittyportti-2-a21`).
+
+`media_source`-kenttä kertoo minkä kansion materiaaleja kohde käyttää:
+- **Tyhjä** → käyttää kohteen omaa ID:tä kansionnimenä
+- **Toisen kohteen ID** → käyttää sen kansion materiaaleja (kuvat säilyvät yhdessä paikassa)
+
+```
+niittyportti-2-a20 (master):  media_source = "niittyportti-2-a21"
+niittyportti-2-a21 (slave):   media_source = (tyhjä → oma ID)
+niittyportti-2-a13 (slave):   media_source = (periytyy masterilta → "niittyportti-2-a21")
+```
+
+Admin-sivulla "Mediakansio" on dropdown jossa vaihtoehdot: Oma + saman talon muut kohteet. Kenttä periytyy master→slave -mallilla.
+
+Toiminnot-osion "Videokierros" ja "360° kierros" -linkit käyttävät `media_source`-arvoa (tai kohteen omaa ID:tä) kansionnimenä.
 
 ### API-reitit
 
@@ -574,6 +592,25 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 ---
 
 ## Muutosloki
+
+### 2026-02-07: Mediakansio + Toiminnot-osion uudelleenjärjestely
+
+**Mediakansio (`media_source`):**
+- Uusi kenttä joka kertoo minkä matterport-arkistokansion materiaaleja kohde käyttää
+- Dropdown saman talon kohteista (related properties)
+- Periytyy master→slave -mallilla
+- Video/360° admin -linkit käyttävät mediaSource-arvoa kansionnimenä
+
+**Toiminnot-osio kohteen muokkaussivulla:**
+- Siirretty Kuvien ja Periytymisen väliin (aiemmin alhaalla)
+- Lisätty linkit: Julkinen sivu, Videokierros, 360° kierros, Avaa 3D-kierros
+- Videokierros/360° -linkit osoittavat oikeaan kansioon mediaSource-kentän perusteella
+
+**Tiedostot:**
+- `lib/properties.ts` — `mediaSource` tyyppi, periytyminen, transformaatio
+- `app/admin/properties/[id]/page.tsx` — Mediakansio-dropdown, Toiminnot-osio siirretty
+- `app/api/admin/properties/[id]/route.ts` — `media_source` sallittu kentäksi
+- `data/properties.json` — `media_source` lisätty kaikille 75 kohteelle
 
 ### 2026-02-06: 360° Panoraama-esittelyjärjestelmä + Videokierrokset
 
