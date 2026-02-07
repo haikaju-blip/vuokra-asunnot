@@ -603,6 +603,12 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 
 ## Muutosloki
 
+### 2026-02-07: Fix — overlay-data.json ei kirjoittunut (mkdirSync)
+
+Generate-reitti yritti kirjoittaa `overlay-data.json` tiedostoa `video/`-kansioon ennen kuin kansio oli olemassa. Shell-skripti luo kansion (`mkdir -p`), mutta se käynnistyy vasta kirjoituksen jälkeen. `writeFileSync` epäonnistui hiljaisesti try/catch-lohkon sisällä.
+
+**Korjaus:** `mkdirSync(videoDir, { recursive: true })` ennen `writeFileSync`-kutsua generate-reitissä (`app/api/admin/video/[kohde]/generate/route.ts`).
+
 ### 2026-02-07: Video-overlay (kohteen tiedot videon päällä)
 
 **Final overlay: yksi navy info-bar + kulta URL-box.**

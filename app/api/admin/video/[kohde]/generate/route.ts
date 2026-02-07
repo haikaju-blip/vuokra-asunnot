@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { spawn } from "child_process"
 import { join } from "path"
-import { existsSync, readFileSync, writeFileSync, unlinkSync } from "fs"
+import { existsSync, readFileSync, writeFileSync, unlinkSync, mkdirSync } from "fs"
 
 const ARCHIVE_BASE = "/opt/vuokra-platform/data/matterport-archive"
 const SCRIPT_PATH = "/opt/vuokra-platform/scripts/generate-tour-video.sh"
@@ -87,6 +87,7 @@ export async function POST(
     const overlayDataPath = join(videoDir, "overlay-data.json")
     if (overlay && incomingPropertyData) {
       try {
+        mkdirSync(videoDir, { recursive: true })
         const overlayData = {
           rent: incomingPropertyData.rent,
           area_m2: incomingPropertyData.area_m2,
