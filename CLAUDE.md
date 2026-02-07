@@ -467,102 +467,97 @@ systemctl status vuokra-esittely.service
 
 ### Toteutettu ratkaisu Matterport-datan omistamiseen
 
-Matterport-tiloista voidaan ekstraktoida kaikki julkinen data ilman tilin omistajuutta:
+Matterport-tiloista voidaan ekstraktoida KAIKKI data ilman tilin omistajuutta:
 
-**Mitä saadaan irti (API:sta):**
+**Mitä saadaan irti:**
 - Korkearesoluutiokuvat (7680×4320 = 33 MP)
+- 360° skybox-panoraamat kaikissa resoluutioissa (low, high, 2k, 4k)
+- 3D-mallit (DAM, OBJ, ZIP)
+- Tekstuurit (high, low, 50k)
 - Huonemitat (m², korkeus, leveys, syvyys)
-- Kokonaispinta-ala
-- Metadata (osoite, luontipäivä, sweep-pisteet)
+- Pohjapiirrokset (minimap PNG)
+- Galleria-, render- ja semanttinen data
+- Sweep-positiot, huonetieto, naapurisuhteet
 
-**Mitä EI saa ilman tiliä:**
-- Pohjapiirros PDF/DXF
-- 3D-malli (OBJ/GLB)
-- 360° panoraamat (täydet skyboxit)
-
-### Ekstraktointiprosessi
+### Ekstraktointiprosessi (Files API + Catalog)
 
 ```bash
-# 1. Hae kuva-ID:t
-curl -s "https://my.matterport.com/api/player/models/{MODEL_ID}/images"
+# 1. Hae CDN template URL (sisältää auth-avaimen)
+curl -s "https://my.matterport.com/api/player/models/{MODEL_ID}/files"
+# → {"templates": ["https://cdn-2.matterport.com/.../{{filename}}?t=AUTH"], "catalog_file": "catalog.json"}
 
-# 2. Hae signed URL jokaiselle kuvalle
-curl -s "https://my.matterport.com/api/player/models/{MODEL_ID}/images/{IMAGE_ID}" \
-  | jq -r '.signed_src'
+# 2. Lataa catalog.json (listaa KAIKKI tiedostot)
+# Korvaa {{filename}} → catalog.json
 
-# 3. Lataa kuva
-curl -sL "{SIGNED_URL}" -o image.jpg
+# 3. Lataa jokainen tiedosto catalogista template-URL:lla
+# Korvaa {{filename}} → tiedostonimi (esim. pan/2k/SCANID_skybox0.jpg)
 ```
 
-### Video-generointi kuvista (Ken Burns)
-
-FFmpeg-putki joka luo ammattimaisen videon still-kuvista:
-
+**Lisädata showcase-sivulta:**
 ```bash
-# Luo yksittäiset klipit Ken Burns -efektillä
-ffmpeg -loop 1 -i image.jpg \
-  -vf "scale=8000:-1,zoompan=z='1.0+on/500':x='iw/4+on/5':y='ih/4':d=150:s=1920x1080:fps=30" \
-  -t 5 -c:v libx264 -preset fast -crf 20 clip.mp4
-
-# Yhdistä crossfade-siirtymillä
-ffmpeg -i clip1.mp4 -i clip2.mp4 ... \
-  -filter_complex "[0:v][1:v]xfade=transition=fade:duration=0.5:offset=4.5[v01];..." \
-  -c:v libx264 -preset slow -crf 18 output.mp4
+# Sweep-positiot, huoneet, naapurit
+curl -s "https://my.matterport.com/show/?m={MODEL_ID}"
+# → HTML sisältää MODELDATA = parseJSON("...") → JSON sweep/room data
 ```
-
-### Arkistorakenne
-
-```
-/data/matterport-archive/{kohde-id}/
-├── images/              # Korkearesoluutiokuvat (30+ MB)
-├── video/
-│   ├── *-tour.mp4       # Master (23 MB)
-│   ├── *-tour-web.mp4   # Web-optimoitu (12 MB)
-│   └── *-tour.webm      # Pienin (6 MB)
-├── metadata.json        # Mitat, huoneet, osoite
-└── RAPORTTI-*.md        # Dokumentaatio
-```
-
-### Ekstraktoidut Matterport-tilat (7 kpl)
-
-| Kohde | Model ID | Kuvat | Video | Arkisto |
-|-------|----------|-------|-------|---------|
-| niittyportti-2-a21 | SQMmpYKKQ7L | 14 | 12 MB | 75 MB |
-| kilterinrinne-3-a | yT6twx42vuJ | 16 | 16 MB | 92 MB |
-| kilterinrinne-3-b | QgLMeLZmCfv | 13 | 18 MB | 93 MB |
-| tyonjohtajankatu-5-as6 | QbpBYmj8zw4 | 16 | 13 MB | 75 MB |
-| tyonjohtajankatu-5-as7 | EuJFUDWy9UX | 13 | 15 MB | 77 MB |
-| tyonjohtajankatu-5-as16 | Mf7ndzm5V1v | 17 | 14 MB | 80 MB |
-| laajaniitynkuja-7-d | H2LtzgaK7Ve | 14 | 17 MB | 91 MB |
-
-**Yhteensä:** 582 MB arkisto, 105 kuvaa, 7 web-videota
-
-### Poistetut/ei-saatavilla olevat tilat
-
-| Model ID | Status |
-|----------|--------|
-| gpkPQS85df4 | HTTP 404 - poistettu |
-| 5g7VZfKVRtP | HTTP 404 - poistettu |
-| dn22Xkc1PcY | HTTP 404 - poistettu |
-
-### Tiedostopolut
-
-**Arkisto:** `/opt/vuokra-platform/data/matterport-archive/{kohde}/`
-**Dropzone:** `/srv/shared/DROPZONE/{kohde}-tour-web.mp4`
-**Web:** `/videos/{kohde}-tour-web.mp4`
 
 ### Ekstraktointiskriptit
 
 ```bash
-# Yksittäinen ekstraktointi (Python, suositeltu)
-python3 /opt/vuokra-platform/scripts/extract-matterport-batch.py MODEL_ID kohde-nimi
+# TÄYSEKSTRAKTOINTI (kaikki data, Hetznerillä):
+python3 ~/extract-all-matterport.py                          # Kaikki 10 kohdetta
+python3 ~/extract-all-matterport.py MODEL_ID kohde-nimi      # Yksittäinen
 
-# Batch-ekstraktointi (muokkaa TARGETS-listaa skriptissä)
+# Vain kuvat + Ken Burns video (Tommilla):
+/opt/vuokra-platform/scripts/extract-matterport.sh <MODEL_ID> <KOHDE_NIMI>
 python3 /opt/vuokra-platform/scripts/extract-matterport-batch.py
-
-# Vanha bash-skripti (vaatii bc:n)
-/opt/vuokra-platform/scripts/extract-matterport.sh MODEL_ID kohde-nimi
 ```
+
+### Ekstraktoidut Matterport-tilat (10 kpl)
+
+**Hetzner-arkisto:** `jukka@65.109.164.17:/home/jukka/matterport-archive/`
+
+| Kohde | Model ID | Koko | Tila |
+|-------|----------|------|------|
+| kilterinrinne-3-a | yT6twx42vuJ | 162 MB | Kaikki |
+| kilterinrinne-3-a28 | gpkPQS85df4 | 167 MB | Kaikki |
+| kilterinrinne-3-b | QgLMeLZmCfv | 162 MB | Kaikki |
+| kilterinrinne-3-c39 | 5g7VZfKVRtP | 153 MB | Kaikki |
+| kilterinrinne-3-c43 | dn22Xkc1PcY | 167 MB | Kaikki |
+| tyonjohtajankatu-5-as6 | QbpBYmj8zw4 | 140 MB | Kaikki |
+| tyonjohtajankatu-5-as7 | EuJFUDWy9UX | 98 MB | Kaikki |
+| tyonjohtajankatu-5-as16 | Mf7ndzm5V1v | 80 MB | Vain kuvat+videot (malli poistettu 404) |
+| niittyportti-2-a21 | SQMmpYKKQ7L | 159 MB | Kaikki |
+| laajaniitynkuja-7-d | H2LtzgaK7Ve | 202 MB | Kaikki |
+
+**Yhteensä: 1.5 GB, 10 kohdetta (9 täydellistä + 1 osittainen)**
+
+**Tommi-arkisto (vain kuvat+videot):** `/opt/vuokra-platform/data/matterport-archive/{kohde}/`
+
+### Arkistorakenne per kohde (Hetzner)
+
+```
+/home/jukka/matterport-archive/{kohde}/
+├── metadata-raw.json      # Player API metadata (sweeps, images)
+├── model-graph.json       # Showcase MODELDATA (positiot, huoneet, naapurit)
+├── space-data.json        # Koottu sweep-data
+├── catalog.json           # Täydellinen tiedostolista
+├── images/                # Hi-res kuvat (7680×4320)
+├── panoramas/
+│   ├── low/               # Skybox 512px faces (6 per sweep)
+│   ├── high/              # Skybox 1024px
+│   ├── 2k/                # Skybox 2048px
+│   └── 4k/                # Skybox 4096px
+├── textures/              # 3D-mallin tekstuurit
+├── models/                # 3D-mallit (DAM, OBJ, ZIP)
+├── gallery/               # Galleriakuvat
+├── render/                # Renderöidyt kuvat
+├── floorplans/            # Pohjapiirrokset (minimap PNG)
+└── semantic/              # Semanttinen data
+```
+
+### Poistetut mallit (404)
+
+- **Mf7ndzm5V1v** (tyonjohtajankatu-5-as16) — kuvat haettu 5.2.2026, skybox ei ehditty ennen poistoa
 
 ---
 
@@ -655,30 +650,28 @@ Admin-sivu videokuvien valintaan, järjestämiseen (drag & drop) ja videon uudel
 
 ---
 
-### 🏆 2026-02-05: Matterport Data Extraction - VALMIS
+### 🏆 2026-02-05/06: Matterport Data Extraction - VALMIS
 
-**Strateginen läpimurto:** Matterport-datan omistaminen ilman tilin hallintaa.
+**Strateginen läpimurto:** Matterport-datan TÄYDELLINEN omistaminen ilman tilin hallintaa.
 
-**Toteutettu:**
-- Matterport API:n reverse-engineering → kuvien ja metadatan ekstraktointi
+**2026-02-05: Kuvat + videot (7 kohdetta)**
+- Matterport Player API → kuvien ja metadatan ekstraktointi
 - FFmpeg-putki: Ken Burns -efekti + crossfade → ammattimainen video
-- Python batch-skripti automatisointiin (`extract-matterport-batch.py`)
-- **Kaikki 7 saatavilla olevaa tilaa ekstraktoitu:**
-  - niittyportti-2-a21, kilterinrinne-3-a, kilterinrinne-3-b
-  - tyonjohtajankatu-5-as6, tyonjohtajankatu-5-as7, tyonjohtajankatu-5-as16
-  - laajaniitynkuja-7-d
-- 3 tilaa ei saatavilla (poistettu Matterportista): gpkPQS85df4, 5g7VZfKVRtP, dn22Xkc1PcY
+- Python batch-skripti: `extract-matterport-batch.py`
 
-**Tulokset:**
-- 582 MB arkisto korkearesoluutiokuvia + videoita
-- 105 kuvaa @ 7680×4320 (33 MP)
-- 7 web-videota (12-18 MB, 1080p, ~50s Ken Burns)
+**2026-02-06: KAIKKI data (10 kohdetta) → Hetzner**
+- Files API + catalog.json → KAIKKI tiedostot (skyboxit, 3D, tekstuurit)
+- Showcase HTML → MODELDATA (sweep-positiot, huoneet, naapurit)
+- `extract-all-matterport.py` Hetznerillä → 1.5 GB, 9 täydellistä + 1 osittainen
+- gpkPQS85df4, 5g7VZfKVRtP, dn22Xkc1PcY palasivat saataville (olivat 404 5.2.)
+- Mf7ndzm5V1v (tyonjohtajankatu-5-as16) poistunut pysyvästi (404)
 
 **Tiedostot:**
-- `/data/matterport-archive/niittyportti-2-a21/` - Arkisto
-- `/public/videos/` - Web-videot
+- Hetzner: `/home/jukka/matterport-archive/{kohde}/` (kaikki data)
+- Tommi: `/data/matterport-archive/{kohde}/` (kuvat + videot)
+- Web-videot: `/public/videos/{kohde}-tour-web.mp4`
 
-**Hyöty:** Matterport-tilaus voidaan lopettaa kun kaikki kohteet prosessoitu.
+**Hyöty:** Matterport-tilaus voidaan lopettaa — kaikki data omistetaan.
 
 ### 2026-02-05: Matterport-modali + 3D-badge
 
