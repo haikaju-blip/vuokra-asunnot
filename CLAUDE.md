@@ -603,6 +603,11 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 
 ## Muutosloki
 
+### 2026-02-07: Overlay oikeaan yläkulmaan + videoSize-fix
+
+- `scripts/generate-overlay.py` — info-bar siirretty vasemmasta yläkulmasta oikeaan yläkulmaan, dynaaminen leveys sisällön mukaan
+- `app/admin/video/[kohde]/page.tsx` — esikatselu päivitetty (right-2), generoinnin jälkeen haetaan päivitetyt hasVideo+videoSize API:sta (korjaa "0 KB" -näyttövirheen)
+
 ### 2026-02-07: Yhtenäinen kuvaputki — dropzone → galleria + video
 
 Ei-Matterport-kohteet (esim. isokatu-60-b52) voivat nyt myös saada videokierroksen. Kuvien käsittely kopioi originaalit automaattisesti `matterport-archive/{kohde}/images/`-kansioon, josta video-admin löytää ne.

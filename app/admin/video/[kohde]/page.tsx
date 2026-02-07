@@ -235,7 +235,11 @@ export default function AdminVideoPage({
           clearInterval(interval)
           setGenerating(false)
           if (data.status === "completed") {
-            setHasVideo(true)
+            // Hae päivitetyt tiedot (hasVideo, videoSize)
+            const infoRes = await fetch(`/api/admin/video/${kohde}`)
+            const infoData = await infoRes.json()
+            setHasVideo(infoData.hasVideo)
+            setVideoSize(infoData.videoSize)
           }
         }
       } catch {
@@ -472,8 +476,8 @@ export default function AdminVideoPage({
 
             {/* Esikatselu — Final */}
             <div className="rounded-lg relative overflow-hidden aspect-video bg-gradient-to-b from-[#E5E8EC] via-[#D8DBE0] to-[#C9A86A]">
-              {/* Info-bar (vasen ylä) */}
-              <div className="absolute top-2 left-2 bg-[#1B3A5C] px-3 py-2 rounded-xl shadow-lg flex items-center gap-1 whitespace-nowrap overflow-hidden text-[10px] text-white font-medium">
+              {/* Info-bar (oikea ylä) */}
+              <div className="absolute top-2 right-2 bg-[#1B3A5C] px-3 py-2 rounded-xl shadow-lg flex items-center gap-1 whitespace-nowrap overflow-hidden text-[10px] text-white font-medium">
                 <span className="text-[#C8A96E] font-semibold">
                   {propertyData.status === "available" || !propertyData.available_date
                     ? "Vapaa"
