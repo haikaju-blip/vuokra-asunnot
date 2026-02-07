@@ -7,24 +7,23 @@ const ARCHIVE_BASE = "/opt/vuokra-platform/data/matterport-archive"
 const PROPERTIES_PATH = "/opt/vuokra-platform/data/properties.json"
 
 /** Päivitä kohteen tiedot properties.json:iin.
- *  Hakee ensin id:llä (täsmällinen), sitten media_source/id fallback. */
+ *  Käyttää _propertyId:tä jos saatavilla (täsmällinen), muuten media_source → id fallback. */
 function updatePropertyData(kohde: string, updates: Record<string, unknown>): boolean {
   try {
     const raw = readFileSync(PROPERTIES_PATH, "utf-8")
     const props = JSON.parse(raw) as Array<Record<string, unknown>>
 
-    // Täsmällinen haku: jos updates sisältää id:n, käytä sitä
+    // 1. Täsmällinen haku _propertyId:llä (clientiltä)
     const targetId = updates._propertyId as string | undefined
     let index = -1
     if (targetId) {
       index = props.findIndex((p) => p.id === targetId)
     }
-    // Fallback: hae media_source tai id:llä
+    // 2. Fallback: media_source ensin (kohde joka viittaa tähän kansioon), id viimeisenä
     if (index === -1) {
-      // Priorisoi id-match ennen media_source-matchia
-      index = props.findIndex((p) => p.id === kohde)
+      index = props.findIndex((p) => p.media_source === kohde)
       if (index === -1) {
-        index = props.findIndex((p) => p.media_source === kohde)
+        index = props.findIndex((p) => p.id === kohde)
       }
     }
     if (index === -1) return false
@@ -107,9 +106,9 @@ export async function GET(
     try {
       const propsRaw = readFileSync(PROPERTIES_PATH, "utf-8")
       const props = JSON.parse(propsRaw) as Array<Record<string, unknown>>
-      // Priorisoi id-match ennen media_source-matchia
-      const match = props.find((p) => p.id === kohde)
-        || props.find((p) => p.media_source === kohde)
+      // media_source ensin (kohde joka viittaa tähän kansioon), id fallback
+      const match = props.find((p) => p.media_source === kohde)
+        || props.find((p) => p.id === kohde)
       if (match) {
         propertyData = {
           id: match.id,
