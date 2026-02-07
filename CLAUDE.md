@@ -444,8 +444,14 @@ apps/esittely/
 scripts/ (repon ulkopuolella: /opt/vuokra-platform/scripts/)
 ├── extract-matterport.sh         # Matterport-datan ekstraktointi
 ├── extract-matterport-batch.py   # Batch-ekstraktointi
-├── generate-tour-video.sh        # Ken Burns -video valituista kuvista
+├── generate-tour-video.sh        # Ken Burns -video + ELEA intro/outro
+├── generate-intro-outro.py       # ELEA-brändätty intro (4s) ja outro (3s)
 └── stitch-panorama.sh            # Hugin CLI panoraama-stitching
+
+assets/ (repon ulkopuolella: /opt/vuokra-platform/assets/)
+├── fonts/
+│   ├── DMSerifDisplay-Regular.ttf  # ELEA-logo fontti
+│   └── DMSans-Regular.ttf          # ASUNNOT + URL fontti
 ```
 
 ---
@@ -593,6 +599,22 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 
 ## Muutosloki
 
+### 2026-02-07: ELEA-brändätty video intro/outro
+
+**Intro (4s) ja outro (3s) lisätään automaattisesti kaikkiin generoituihin videokierroksiin.**
+
+- `scripts/generate-intro-outro.py` — Pillow-pohjainen slate-kuva + ffmpeg fade
+- Noudattaa ELEA-video-intro-outro-ohje-v2 -spesifikaatiota (DROPZONE)
+- Intro: fade in 0–0.6s, näkyvissä 0.6–3.0s, fade out 3.0–4.0s
+- Outro: fade in 0–0.8s, jää ruutuun (EI fade outia)
+- `scripts/generate-tour-video.sh` päivitetty kutsumaan intro/outro-skriptiä
+- Fontit: `assets/fonts/DMSerifDisplay-Regular.ttf`, `assets/fonts/DMSans-Regular.ttf`
+
+**Tiedostot:**
+- `scripts/generate-intro-outro.py` (uusi)
+- `scripts/generate-tour-video.sh` (muokattu — intro/outro-integraatio)
+- `assets/fonts/DMSans-Regular.ttf` (uusi — Google Fonts)
+
 ### 2026-02-07: Mediakansio + Toiminnot-osion uudelleenjärjestely
 
 **Mediakansio (`media_source`):**
@@ -671,13 +693,23 @@ Admin-sivu videokuvien valintaan, järjestämiseen (drag & drop) ja videon uudel
 - `/admin/video/[kohde]` — kuvagrid, valinta/poisto, drag & drop järjestys
 - Valinta tallennetaan: `matterport-archive/{kohde}/video-config.json`
 - "Generoi video" -nappi ajaa `scripts/generate-tour-video.sh` valituilla kuvilla
-- Max 12 kuvaa per video (= 60s), yli menevät näkyvät punaisella badgella
+- Max 20 kuvaa per video (= ~100s), yli menevät näkyvät punaisella badgella
 - Edistymisen seuranta + valmiin videon esikatselu
 
 **Skripti:** `scripts/generate-tour-video.sh <kohde> <kuva1> <kuva2> ...`
+- ELEA-brändätty intro (4s) ja outro (3s) lisätään automaattisesti
 - Ken Burns clips (zoompan, 5s/kuva, vuorotteleva zoom in/out)
 - Crossfade xfade (0.5s fades, hardcoded offsets — bc ei asennettu)
 - Web-versio (CRF 23, faststart) → `public/videos/{kohde}-tour-web.mp4`
+
+**Intro/outro:** `scripts/generate-intro-outro.py`
+- Noudattaa ELEA-video-intro-outro-ohje-v2 -spesifikaatiota
+- Generoi staattinen slate-kuva (Pillow): ELEA + ASUNNOT + eleaasunnot.fi
+- Intro (4s): fade in 0–0.6s, näkyvissä 0.6–3.0s, fade out 3.0–4.0s
+- Outro (3s): fade in 0–0.8s, jää ruutuun (EI fade outia)
+- Tausta: navy #1B3A5C, logo: kulta #C8A96E
+- Fontit: DM Serif Display (ELEA), DM Sans (ASUNNOT, URL)
+- Spesifikaatio: `/srv/shared/DROPZONE/ELEA-video-intro-outro-ohje-v2(1).md`
 
 #### Stitching-pipeline (S25 Ultra -kuville)
 
