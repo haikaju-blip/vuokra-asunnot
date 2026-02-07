@@ -73,9 +73,11 @@ export async function POST(
         // Lue tuoreet tiedot properties.json:sta (juuri päivitetty yllä)
         const propsRaw = readFileSync(PROPERTIES_PATH, "utf-8")
         const props = JSON.parse(propsRaw) as Array<Record<string, unknown>>
-        const match = props.find(
-          (p) => p.media_source === kohde || p.id === kohde
-        )
+        // Priorisoi id-match, käytä _propertyId jos saatavilla
+        const targetId = incomingPropertyData?._propertyId as string | undefined
+        const match = (targetId ? props.find((p) => p.id === targetId) : null)
+          || props.find((p) => p.id === kohde)
+          || props.find((p) => p.media_source === kohde)
         if (match) {
           const overlayData = {
             rent: match.rent,

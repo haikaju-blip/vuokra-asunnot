@@ -605,26 +605,24 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 
 ### 2026-02-07: Video-overlay (kohteen tiedot videon päällä)
 
-**V4 Hybrid overlay Ken Burns -klippien päällä — erilliset pillit, ei gradienttia.**
+**V5b overlay Ken Burns -klippien päällä — kaksi laatikkoa vasemmassa yläkulmassa.**
 
-Noudattaa `ELEA-video-overlay-v4-ohje.md` -spesifikaatiota.
+Noudattaa `ELEA-video-overlay-v5b-ohje.md` -spesifikaatiota.
 
 - Checkbox admin video-sivulla: "Lisää tiedot videon päälle"
 - Overlay-kentät muokattavissa suoraan video-sivulla (vuokra, m², kokoonpano, status, alue, kaupunki)
-- Muutokset tallentuvat properties.json:iin suoraan video-API:n kautta (`updatePropertyData` helper)
+- Muutokset tallentuvat properties.json:iin `updatePropertyData` helperillä (käyttää `_propertyId` täsmällistä hakua)
 - Molemmat reitit (PUT config + POST generate) päivittävät properties.json:n
-- Esikatselu V4-layoutilla päivittyy reaaliajassa (gradient-tausta, 4 elementtiä)
+- Haku: id-match ensin, media_source-fallback (ei ristiin menevää dataa)
+- Esikatselu V5b-layoutilla päivittyy reaaliajassa
 - Overlay näkyy vain content-klipeissä, EI introssa/outrossa
 
-**V4 Overlay-elementit (16:9, 1920×1080):**
-1. **Status-badge** (vasen ylä): navy pill #1B3A5C, SemiBold 24px, varjo
-2. **Hinta-pill** (vasen ala): navy pill #1B3A5C, Bold 44px, vahva varjo
-3. **Meta-teksti** (pillin oikealla): valkoinen Medium 26px, 3-tasoinen drop shadow (ei taustaa)
-4. **URL-pill** (oikea ala): kulta pill #C8A96E, SemiBold 24px, kultainen varjo
+**V5b Overlay-elementit (16:9, 1920×1080):**
+1. **Ylälaatikko** (navy #1B3A5C): Status-badge vasemmalla (SemiBold 24px) + Hinta oikealla (Bold 44px), gap 40px
+2. **Alalaatikko** (kulta #C8A96E): Meta-teksti ylhäällä (Medium 24px) + URL alhaalla (SemiBold 22px, opacity 92%)
 
 **Skripti:** `scripts/generate-overlay.py <overlay-data.json> <output.png>`
 - Pillow RGBA 1920×1080 PNG, ImageFilter blur-varjot
-- Meta-teksti dynaamisesti hinta-pillin oikealle puolelle (px1 + 16px)
 - Fontit: DM Sans Bold/SemiBold/Medium (`assets/fonts/`)
 
 **Tiedostot:**

@@ -6,17 +6,30 @@ import { existsSync, readFileSync, writeFileSync } from "fs"
 const ARCHIVE_BASE = "/opt/vuokra-platform/data/matterport-archive"
 const PROPERTIES_PATH = "/opt/vuokra-platform/data/properties.json"
 
-/** Päivitä kohteen tiedot properties.json:iin */
+/** Päivitä kohteen tiedot properties.json:iin.
+ *  Hakee ensin id:llä (täsmällinen), sitten media_source/id fallback. */
 function updatePropertyData(kohde: string, updates: Record<string, unknown>): boolean {
   try {
     const raw = readFileSync(PROPERTIES_PATH, "utf-8")
     const props = JSON.parse(raw) as Array<Record<string, unknown>>
-    const index = props.findIndex(
-      (p) => p.media_source === kohde || p.id === kohde
-    )
+
+    // Täsmällinen haku: jos updates sisältää id:n, käytä sitä
+    const targetId = updates._propertyId as string | undefined
+    let index = -1
+    if (targetId) {
+      index = props.findIndex((p) => p.id === targetId)
+    }
+    // Fallback: hae media_source tai id:llä
+    if (index === -1) {
+      // Priorisoi id-match ennen media_source-matchia
+      index = props.findIndex((p) => p.id === kohde)
+      if (index === -1) {
+        index = props.findIndex((p) => p.media_source === kohde)
+      }
+    }
     if (index === -1) return false
 
-    const allowed = ["rent", "area_m2", "rooms", "room_layout", "status", "available_date", "neighborhood"]
+    const allowed = ["rent", "area_m2", "rooms", "room_layout", "status", "available_date", "neighborhood", "city"]
     for (const field of allowed) {
       if (field in updates) {
         props[index][field] = updates[field]
@@ -94,9 +107,9 @@ export async function GET(
     try {
       const propsRaw = readFileSync(PROPERTIES_PATH, "utf-8")
       const props = JSON.parse(propsRaw) as Array<Record<string, unknown>>
-      const match = props.find(
-        (p) => p.media_source === kohde || p.id === kohde
-      )
+      // Priorisoi id-match ennen media_source-matchia
+      const match = props.find((p) => p.id === kohde)
+        || props.find((p) => p.media_source === kohde)
       if (match) {
         propertyData = {
           id: match.id,
