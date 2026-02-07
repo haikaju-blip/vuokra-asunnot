@@ -461,23 +461,32 @@ export default function AdminVideoPage({
               </div>
             </div>
 
-            {/* Esikatselu */}
-            <div className="p-3 rounded-lg bg-[#1B3A5C] text-white text-sm relative overflow-hidden">
-              <div className="inline-block px-2 py-1 rounded bg-[#1B3A5C] border border-white/20 text-[11px] font-semibold mb-2">
+            {/* Esikatselu V4 Hybrid */}
+            <div className="rounded-lg relative overflow-hidden aspect-video bg-gradient-to-b from-[#E5E8EC] via-[#D8DBE0] to-[#C9A86A]">
+              {/* Status badge — vasen yläkulma */}
+              <div className="absolute top-2 left-2 bg-[#1B3A5C] text-white text-[10px] font-semibold px-2 py-1 rounded-md shadow-md">
                 {propertyData.status === "available" || !propertyData.available_date
                   ? "Vapaa nyt"
                   : `Vapaa ${new Date(propertyData.available_date).getDate()}.${new Date(propertyData.available_date).getMonth() + 1}.`}
               </div>
-              <div className="flex justify-between items-baseline">
-                <span className="text-lg font-bold">{propertyData.rent} €/kk</span>
-                <span className="text-xs text-[#C8A96E]">eleaasunnot.fi</span>
+
+              {/* Hinta pill — vasen alakulma */}
+              <div className="absolute bottom-2 left-2 bg-[#1B3A5C] px-2.5 py-1.5 rounded-lg shadow-lg">
+                <span className="text-white text-sm font-bold">{propertyData.rent} €/kk</span>
               </div>
-              <div className="text-xs text-white/85 mt-0.5">
+
+              {/* Meta — pillin oikealla puolella */}
+              <div className="absolute bottom-3 left-[100px] text-[10px] font-medium text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]">
                 {[
                   propertyData.area_m2 ? `${propertyData.area_m2} m²` : null,
                   propertyData.room_layout || (propertyData.rooms ? `${propertyData.rooms} huonetta` : null),
                   [propertyData.neighborhood, propertyData.city].filter(Boolean).join(", "),
                 ].filter(Boolean).join(" · ")}
+              </div>
+
+              {/* URL pill — oikea alakulma */}
+              <div className="absolute bottom-2 right-2 bg-[#C8A96E] text-white text-[10px] font-semibold px-2 py-1.5 rounded-md shadow-md">
+                eleaasunnot.fi
               </div>
             </div>
           </div>

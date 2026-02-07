@@ -605,19 +605,27 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 
 ### 2026-02-07: Video-overlay (kohteen tiedot videon päällä)
 
-**Valinnainen overlay Ken Burns -klippien päällä: status-badge, hinta, meta, URL.**
+**V4 Hybrid overlay Ken Burns -klippien päällä — erilliset pillit, ei gradienttia.**
+
+Noudattaa `ELEA-video-overlay-v4-ohje.md` -spesifikaatiota.
 
 - Checkbox admin video-sivulla: "Lisää tiedot videon päälle"
 - Overlay-kentät muokattavissa suoraan video-sivulla (vuokra, m², kokoonpano, status, alue, kaupunki)
 - Muutokset tallentuvat properties.json:iin suoraan video-API:n kautta (`updatePropertyData` helper)
-- Molemmat reitit (PUT config + POST generate) päivittävät properties.json:n — ei erillistä /api/admin/properties -kutsua
-- Esikatselu navy-pohjalla päivittyy reaaliajassa
+- Molemmat reitit (PUT config + POST generate) päivittävät properties.json:n
+- Esikatselu V4-layoutilla päivittyy reaaliajassa (gradient-tausta, 4 elementtiä)
 - Overlay näkyy vain content-klipeissä, EI introssa/outrossa
-- Noudattaa ELEA-video-overlay-ohje -spesifikaatiota (16:9 koot)
+
+**V4 Overlay-elementit (16:9, 1920×1080):**
+1. **Status-badge** (vasen ylä): navy pill #1B3A5C, SemiBold 24px, varjo
+2. **Hinta-pill** (vasen ala): navy pill #1B3A5C, Bold 44px, vahva varjo
+3. **Meta-teksti** (pillin oikealla): valkoinen Medium 26px, 3-tasoinen drop shadow (ei taustaa)
+4. **URL-pill** (oikea ala): kulta pill #C8A96E, SemiBold 24px, kultainen varjo
 
 **Skripti:** `scripts/generate-overlay.py <overlay-data.json> <output.png>`
-- Pillow RGBA 1920×1080 PNG: status-badge (navy), gradient (musta 70%), hinta (bold 44px), meta (regular 24px), URL (kulta 22px)
-- Fontit: DM Sans Bold/SemiBold/Medium/Regular (`assets/fonts/`)
+- Pillow RGBA 1920×1080 PNG, ImageFilter blur-varjot
+- Meta-teksti dynaamisesti hinta-pillin oikealle puolelle (px1 + 16px)
+- Fontit: DM Sans Bold/SemiBold/Medium (`assets/fonts/`)
 
 **Tiedostot:**
 - `scripts/generate-overlay.py` (uusi)
