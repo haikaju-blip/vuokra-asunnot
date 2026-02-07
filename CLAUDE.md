@@ -444,14 +444,18 @@ apps/esittely/
 scripts/ (repon ulkopuolella: /opt/vuokra-platform/scripts/)
 ├── extract-matterport.sh         # Matterport-datan ekstraktointi
 ├── extract-matterport-batch.py   # Batch-ekstraktointi
-├── generate-tour-video.sh        # Ken Burns -video + ELEA intro/outro
+├── generate-tour-video.sh        # Ken Burns -video + ELEA intro/outro + overlay
 ├── generate-intro-outro.py       # ELEA-brändätty intro (4s) ja outro (3s)
+├── generate-overlay.py           # Kohteen tiedot -overlay (RGBA PNG)
 └── stitch-panorama.sh            # Hugin CLI panoraama-stitching
 
 assets/ (repon ulkopuolella: /opt/vuokra-platform/assets/)
 ├── fonts/
 │   ├── DMSerifDisplay-Regular.ttf  # ELEA-logo fontti
-│   └── DMSans-Regular.ttf          # ASUNNOT + URL fontti
+│   ├── DMSans-Regular.ttf          # Teksti regular (400)
+│   ├── DMSans-Medium.ttf           # Teksti medium (500)
+│   ├── DMSans-SemiBold.ttf         # Teksti semibold (600)
+│   └── DMSans-Bold.ttf             # Teksti bold (700)
 ```
 
 ---
@@ -598,6 +602,31 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 ---
 
 ## Muutosloki
+
+### 2026-02-07: Video-overlay (kohteen tiedot videon päällä)
+
+**Valinnainen overlay Ken Burns -klippien päällä: status-badge, hinta, meta, URL.**
+
+- Checkbox admin video-sivulla: "Lisää tiedot videon päälle"
+- Overlay-kentät muokattavissa suoraan video-sivulla (vuokra, m², kokoonpano, status, alue, kaupunki)
+- Muutokset tallentuvat myös kohteen hallintasivulle (PUT /api/admin/properties/[id])
+- Esikatselu navy-pohjalla päivittyy reaaliajassa
+- Overlay näkyy vain content-klipeissä, EI introssa/outrossa
+- Noudattaa ELEA-video-overlay-ohje -spesifikaatiota (16:9 koot)
+
+**Skripti:** `scripts/generate-overlay.py <overlay-data.json> <output.png>`
+- Pillow RGBA 1920×1080 PNG: status-badge (navy), gradient (musta 70%), hinta (bold 44px), meta (regular 24px), URL (kulta 22px)
+- Fontit: DM Sans Bold/SemiBold/Medium/Regular (`assets/fonts/`)
+
+**Tiedostot:**
+- `scripts/generate-overlay.py` (uusi)
+- `scripts/generate-tour-video.sh` (muokattu — overlay composite per clip)
+- `app/admin/video/[kohde]/page.tsx` (muokattu — checkbox + muokattavat kentät)
+- `app/api/admin/video/[kohde]/route.ts` (muokattu — overlay + propertyData)
+- `app/api/admin/video/[kohde]/generate/route.ts` (muokattu — overlay-data.json)
+- `assets/fonts/DMSans-Bold.ttf` (uusi)
+- `assets/fonts/DMSans-SemiBold.ttf` (uusi)
+- `assets/fonts/DMSans-Medium.ttf` (uusi)
 
 ### 2026-02-07: ELEA-brändätty video intro/outro
 

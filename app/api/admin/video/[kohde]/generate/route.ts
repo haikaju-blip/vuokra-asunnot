@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server"
 import { spawn } from "child_process"
 import { join } from "path"
-import { existsSync } from "fs"
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from "fs"
 
 const ARCHIVE_BASE = "/opt/vuokra-platform/data/matterport-archive"
 const SCRIPT_PATH = "/opt/vuokra-platform/scripts/generate-tour-video.sh"
+const PROPERTIES_PATH = "/opt/vuokra-platform/data/properties.json"
 
 // Track running jobs
 const runningJobs = new Map<string, { status: string; output: string; startedAt: number }>()
@@ -21,7 +22,7 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { images } = body as { images: string[] }
+    const { images, overlay } = body as { images: string[]; overlay?: boolean }
 
     if (!Array.isArray(images) || images.length < 2) {
       return NextResponse.json({ error: "Tarvitaan vähintään 2 kuvaa" }, { status: 400 })
@@ -52,6 +53,39 @@ export async function POST(
 
     if (!existsSync(SCRIPT_PATH)) {
       return NextResponse.json({ error: "Generointiskriptiä ei löydy" }, { status: 500 })
+    }
+
+    // Write or remove overlay-data.json
+    const videoDir = join(ARCHIVE_BASE, kohde, "video")
+    const overlayDataPath = join(videoDir, "overlay-data.json")
+    if (overlay) {
+      try {
+        const propsRaw = readFileSync(PROPERTIES_PATH, "utf-8")
+        const props = JSON.parse(propsRaw) as Array<Record<string, unknown>>
+        const match = props.find(
+          (p) => p.media_source === kohde || p.id === kohde
+        )
+        if (match) {
+          const overlayData = {
+            rent: match.rent,
+            area_m2: match.area_m2,
+            rooms: match.rooms,
+            room_layout: match.room_layout,
+            status: match.status,
+            available_date: match.available_date,
+            city: match.city,
+            neighborhood: match.neighborhood,
+          }
+          writeFileSync(overlayDataPath, JSON.stringify(overlayData, null, 2), "utf-8")
+        }
+      } catch (e) {
+        console.error("Overlay data write error:", e)
+      }
+    } else {
+      // Poista mahdollinen vanha overlay-data.json
+      try {
+        if (existsSync(overlayDataPath)) unlinkSync(overlayDataPath)
+      } catch {}
     }
 
     // Start generation

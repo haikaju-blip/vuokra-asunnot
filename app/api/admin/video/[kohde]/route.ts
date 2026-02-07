@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
 import { readdir, stat, readFile } from "fs/promises"
 import { join } from "path"
-import { existsSync } from "fs"
+import { existsSync, readFileSync } from "fs"
 
 const ARCHIVE_BASE = "/opt/vuokra-platform/data/matterport-archive"
+const PROPERTIES_PATH = "/opt/vuokra-platform/data/properties.json"
 
 interface ImageInfo {
   filename: string
@@ -52,14 +53,39 @@ export async function GET(
 
     // Check if selection config exists
     let selectedImages: string[] | null = null
+    let overlay = false
     const configPath = join(ARCHIVE_BASE, kohde, "video-config.json")
     if (existsSync(configPath)) {
       try {
         const raw = await readFile(configPath, "utf-8")
         const config = JSON.parse(raw)
         selectedImages = config.selectedImages || null
+        overlay = config.overlay === true
       } catch {}
     }
+
+    // Hae kohteen tiedot properties.json:sta
+    let propertyData: Record<string, unknown> | null = null
+    try {
+      const propsRaw = readFileSync(PROPERTIES_PATH, "utf-8")
+      const props = JSON.parse(propsRaw) as Array<Record<string, unknown>>
+      const match = props.find(
+        (p) => p.media_source === kohde || p.id === kohde
+      )
+      if (match) {
+        propertyData = {
+          id: match.id,
+          rent: match.rent,
+          area_m2: match.area_m2,
+          rooms: match.rooms,
+          room_layout: match.room_layout,
+          status: match.status,
+          available_date: match.available_date,
+          city: match.city,
+          neighborhood: match.neighborhood,
+        }
+      }
+    } catch {}
 
     return NextResponse.json({
       kohde,
@@ -67,6 +93,8 @@ export async function GET(
       hasVideo,
       videoSize,
       selectedImages,
+      overlay,
+      propertyData,
     })
   } catch (error) {
     console.error("Video admin error:", error)
@@ -87,7 +115,7 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { selectedImages } = body as { selectedImages: string[] }
+    const { selectedImages, overlay } = body as { selectedImages: string[]; overlay?: boolean }
 
     if (!Array.isArray(selectedImages)) {
       return NextResponse.json({ error: "selectedImages puuttuu" }, { status: 400 })
@@ -95,7 +123,10 @@ export async function PUT(
 
     const { writeFile } = await import("fs/promises")
     const configPath = join(ARCHIVE_BASE, kohde, "video-config.json")
-    await writeFile(configPath, JSON.stringify({ selectedImages }, null, 2), "utf-8")
+    await writeFile(configPath, JSON.stringify({
+      selectedImages,
+      overlay: overlay === true,
+    }, null, 2), "utf-8")
 
     return NextResponse.json({ success: true })
   } catch (error) {

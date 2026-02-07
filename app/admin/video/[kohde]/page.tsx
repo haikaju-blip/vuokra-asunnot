@@ -8,12 +8,26 @@ interface ImageInfo {
   size: number
 }
 
+interface PropertyData {
+  id: string
+  rent: number
+  area_m2: number | null
+  rooms: number | null
+  room_layout: string | null
+  status: string
+  available_date: string | null
+  city: string
+  neighborhood: string | null
+}
+
 interface VideoData {
   kohde: string
   images: ImageInfo[]
   hasVideo: boolean
   videoSize: number
   selectedImages: string[] | null
+  overlay: boolean
+  propertyData: PropertyData | null
 }
 
 export default function AdminVideoPage({
@@ -32,6 +46,8 @@ export default function AdminVideoPage({
   const [genOutput, setGenOutput] = useState("")
   const [genStatus, setGenStatus] = useState<"idle" | "running" | "completed" | "failed">("idle")
   const [dirty, setDirty] = useState(false)
+  const [overlay, setOverlay] = useState(false)
+  const [propertyData, setPropertyData] = useState<PropertyData | null>(null)
 
   // Drag state
   const [dragIndex, setDragIndex] = useState<number | null>(null)
@@ -54,6 +70,8 @@ export default function AdminVideoPage({
         setAllImages(data.images)
         setHasVideo(data.hasVideo)
         setVideoSize(data.videoSize)
+        setOverlay(data.overlay || false)
+        setPropertyData(data.propertyData || null)
         // If saved selection exists, use it; otherwise select all
         if (data.selectedImages && data.selectedImages.length > 0) {
           setSelected(data.selectedImages)
@@ -122,16 +140,34 @@ export default function AdminVideoPage({
     setDragOverIndex(null)
   }
 
-  // Save selection
+  // Save selection + property data
   const handleSave = async () => {
     if (!kohde) return
     setSaving(true)
     try {
+      // Tallenna video-asetukset
       await fetch(`/api/admin/video/${kohde}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedImages: selected }),
+        body: JSON.stringify({ selectedImages: selected, overlay }),
       })
+
+      // Tallenna kohteen tiedot jos overlay on päällä ja propertyData olemassa
+      if (propertyData?.id) {
+        await fetch(`/api/admin/properties/${propertyData.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            rent: propertyData.rent,
+            area_m2: propertyData.area_m2,
+            room_layout: propertyData.room_layout,
+            status: propertyData.status,
+            available_date: propertyData.available_date,
+            neighborhood: propertyData.neighborhood,
+          }),
+        })
+      }
+
       setDirty(false)
     } catch (e) {
       console.error("Save failed:", e)
@@ -150,7 +186,7 @@ export default function AdminVideoPage({
     await fetch(`/api/admin/video/${kohde}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ selectedImages: selected }),
+      body: JSON.stringify({ selectedImages: selected, overlay }),
     })
     setDirty(false)
 
@@ -158,7 +194,7 @@ export default function AdminVideoPage({
       const res = await fetch(`/api/admin/video/${kohde}/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: selected }),
+        body: JSON.stringify({ images: selected, overlay }),
       })
       const data = await res.json()
 
@@ -303,6 +339,149 @@ export default function AdminVideoPage({
             {generating ? "Generoidaan..." : "Generoi video"}
           </button>
         </div>
+      </div>
+
+      {/* Overlay toggle + muokattavat kentät */}
+      <div className="mb-6 p-4 rounded-xl border border-elea-border bg-card">
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={overlay}
+            onChange={(e) => {
+              setOverlay(e.target.checked)
+              setDirty(true)
+            }}
+            className="w-4 h-4 rounded border-elea-border text-elea-navy focus:ring-elea-navy"
+          />
+          <span className="text-sm font-medium text-elea-navy">
+            Lisää tiedot videon päälle
+          </span>
+        </label>
+
+        {overlay && propertyData && (
+          <div className="mt-4 ml-7">
+            {/* Muokattavat kentät */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-4">
+              <div>
+                <label className="block text-[11px] text-elea-text-muted uppercase tracking-wide mb-1">Vuokra €/kk</label>
+                <input
+                  type="number"
+                  value={propertyData.rent || ""}
+                  onChange={(e) => {
+                    setPropertyData({ ...propertyData, rent: Number(e.target.value) || 0 })
+                    setDirty(true)
+                  }}
+                  className="w-full px-2 py-1.5 text-sm rounded-lg border border-elea-border bg-white focus:ring-1 focus:ring-elea-navy focus:border-elea-navy"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-elea-text-muted uppercase tracking-wide mb-1">Pinta-ala m²</label>
+                <input
+                  type="number"
+                  value={propertyData.area_m2 || ""}
+                  onChange={(e) => {
+                    setPropertyData({ ...propertyData, area_m2: Number(e.target.value) || null })
+                    setDirty(true)
+                  }}
+                  className="w-full px-2 py-1.5 text-sm rounded-lg border border-elea-border bg-white focus:ring-1 focus:ring-elea-navy focus:border-elea-navy"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-elea-text-muted uppercase tracking-wide mb-1">Kokoonpano</label>
+                <input
+                  type="text"
+                  value={propertyData.room_layout || ""}
+                  placeholder="esim. 2h+k"
+                  onChange={(e) => {
+                    setPropertyData({ ...propertyData, room_layout: e.target.value || null })
+                    setDirty(true)
+                  }}
+                  className="w-full px-2 py-1.5 text-sm rounded-lg border border-elea-border bg-white focus:ring-1 focus:ring-elea-navy focus:border-elea-navy"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-elea-text-muted uppercase tracking-wide mb-1">Status</label>
+                <select
+                  value={propertyData.status}
+                  onChange={(e) => {
+                    setPropertyData({ ...propertyData, status: e.target.value })
+                    setDirty(true)
+                  }}
+                  className="w-full px-2 py-1.5 text-sm rounded-lg border border-elea-border bg-white focus:ring-1 focus:ring-elea-navy focus:border-elea-navy"
+                >
+                  <option value="available">Vapaa</option>
+                  <option value="upcoming">Vapautumassa</option>
+                  <option value="rented">Vuokrattu</option>
+                </select>
+              </div>
+              {propertyData.status === "upcoming" && (
+                <div>
+                  <label className="block text-[11px] text-elea-text-muted uppercase tracking-wide mb-1">Vapautuu</label>
+                  <input
+                    type="date"
+                    value={propertyData.available_date || ""}
+                    onChange={(e) => {
+                      setPropertyData({ ...propertyData, available_date: e.target.value || null })
+                      setDirty(true)
+                    }}
+                    className="w-full px-2 py-1.5 text-sm rounded-lg border border-elea-border bg-white focus:ring-1 focus:ring-elea-navy focus:border-elea-navy"
+                  />
+                </div>
+              )}
+              <div>
+                <label className="block text-[11px] text-elea-text-muted uppercase tracking-wide mb-1">Alue</label>
+                <input
+                  type="text"
+                  value={propertyData.neighborhood || ""}
+                  placeholder="esim. Niittykumpu"
+                  onChange={(e) => {
+                    setPropertyData({ ...propertyData, neighborhood: e.target.value || null })
+                    setDirty(true)
+                  }}
+                  className="w-full px-2 py-1.5 text-sm rounded-lg border border-elea-border bg-white focus:ring-1 focus:ring-elea-navy focus:border-elea-navy"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-elea-text-muted uppercase tracking-wide mb-1">Kaupunki</label>
+                <input
+                  type="text"
+                  value={propertyData.city || ""}
+                  onChange={(e) => {
+                    setPropertyData({ ...propertyData, city: e.target.value })
+                    setDirty(true)
+                  }}
+                  className="w-full px-2 py-1.5 text-sm rounded-lg border border-elea-border bg-white focus:ring-1 focus:ring-elea-navy focus:border-elea-navy"
+                />
+              </div>
+            </div>
+
+            {/* Esikatselu */}
+            <div className="p-3 rounded-lg bg-[#1B3A5C] text-white text-sm relative overflow-hidden">
+              <div className="inline-block px-2 py-1 rounded bg-[#1B3A5C] border border-white/20 text-[11px] font-semibold mb-2">
+                {propertyData.status === "available" || !propertyData.available_date
+                  ? "Vapaa nyt"
+                  : `Vapaa ${new Date(propertyData.available_date).getDate()}.${new Date(propertyData.available_date).getMonth() + 1}.`}
+              </div>
+              <div className="flex justify-between items-baseline">
+                <span className="text-lg font-bold">{propertyData.rent} €/kk</span>
+                <span className="text-xs text-[#C8A96E]">eleaasunnot.fi</span>
+              </div>
+              <div className="text-xs text-white/85 mt-0.5">
+                {[
+                  propertyData.area_m2 ? `${propertyData.area_m2} m²` : null,
+                  propertyData.room_layout || (propertyData.rooms ? `${propertyData.rooms} huonetta` : null),
+                  [propertyData.neighborhood, propertyData.city].filter(Boolean).join(", "),
+                ].filter(Boolean).join(" · ")}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {overlay && !propertyData && (
+          <p className="mt-2 ml-7 text-xs text-elea-warm">
+            Kohteen tietoja ei löytynyt. Tarkista että kohde on properties.json:ssa.
+          </p>
+        )}
       </div>
 
       {/* Generation status */}
