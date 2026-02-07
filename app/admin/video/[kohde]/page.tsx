@@ -465,28 +465,24 @@ export default function AdminVideoPage({
               </div>
             </div>
 
-            {/* Esikatselu V5b */}
+            {/* Esikatselu — Final */}
             <div className="rounded-lg relative overflow-hidden aspect-video bg-gradient-to-b from-[#E5E8EC] via-[#D8DBE0] to-[#C9A86A]">
-              {/* Ylälaatikko (navy): badge + hinta */}
-              <div className="absolute top-2 left-2 bg-[#1B3A5C] px-3 py-2 rounded-xl shadow-lg flex items-center gap-4">
-                <span className="text-white text-[10px] font-semibold">
+              {/* Info-bar (vasen ylä) */}
+              <div className="absolute top-2 left-2 bg-[#1B3A5C] px-3 py-2 rounded-xl shadow-lg flex items-center gap-1 whitespace-nowrap overflow-hidden text-[10px] text-white font-medium">
+                <span className="text-[#C8A96E] font-semibold">
                   {propertyData.status === "available" || !propertyData.available_date
-                    ? "Vapaa nyt"
+                    ? "Vapaa"
                     : `Vapaa ${new Date(propertyData.available_date).getDate()}.${new Date(propertyData.available_date).getMonth() + 1}.`}
                 </span>
-                <span className="text-white text-base font-bold">{propertyData.rent} €/kk</span>
+                {propertyData.rent ? <><span className="opacity-35">·</span><span className="text-xs font-bold">{propertyData.rent} €/kk</span></> : null}
+                {propertyData.area_m2 ? <><span className="opacity-35">·</span><span>{propertyData.area_m2} m²</span></> : null}
+                {propertyData.room_layout ? <><span className="opacity-35">·</span><span>{propertyData.room_layout}</span></> : null}
+                {(propertyData.neighborhood || propertyData.city) ? <><span className="opacity-35">·</span><span>{[propertyData.neighborhood, propertyData.city].filter(Boolean).join(", ")}</span></> : null}
               </div>
 
-              {/* Alalaatikko (kulta): meta + URL */}
-              <div className="absolute top-[52px] left-2 bg-[#C8A96E] px-2.5 py-1.5 rounded-lg shadow-md">
-                <div className="text-white text-[10px] font-medium mb-0.5">
-                  {[
-                    propertyData.area_m2 ? `${propertyData.area_m2} m²` : null,
-                    propertyData.room_layout || (propertyData.rooms ? `${propertyData.rooms} huonetta` : null),
-                    [propertyData.neighborhood, propertyData.city].filter(Boolean).join(", "),
-                  ].filter(Boolean).join(" · ")}
-                </div>
-                <div className="text-white/90 text-[9px] font-semibold">eleaasunnot.fi</div>
+              {/* URL-box (oikea ala) */}
+              <div className="absolute bottom-6 right-2 bg-[#C8A96E] text-white text-[9px] font-semibold px-2 py-1 rounded-md shadow-md">
+                eleaasunnot.fi
               </div>
             </div>
           </div>

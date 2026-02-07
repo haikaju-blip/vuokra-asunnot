@@ -605,21 +605,25 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 
 ### 2026-02-07: Video-overlay (kohteen tiedot videon päällä)
 
-**V5b overlay Ken Burns -klippien päällä — kaksi laatikkoa vasemmassa yläkulmassa.**
+**Final overlay: yksi navy info-bar + kulta URL-box.**
 
-Noudattaa `ELEA-video-overlay-v5b-ohje.md` -spesifikaatiota.
+Noudattaa `ELEA-video-overlay-final-ohje.md` -spesifikaatiota.
 
 - Checkbox admin video-sivulla: "Lisää tiedot videon päälle"
 - Overlay-kentät muokattavissa suoraan video-sivulla (vuokra, m², kokoonpano, status, alue, kaupunki)
-- Muutokset tallentuvat properties.json:iin `updatePropertyData` helperillä (käyttää `_propertyId` täsmällistä hakua)
+- Muutokset tallentuvat properties.json:iin + overlay-data.json kirjoitetaan suoraan clientin datasta
 - Molemmat reitit (PUT config + POST generate) päivittävät properties.json:n
-- Haku: id-match ensin, media_source-fallback (ei ristiin menevää dataa)
-- Esikatselu V5b-layoutilla päivittyy reaaliajassa
+- Esikatselu päivittyy reaaliajassa
 - Overlay näkyy vain content-klipeissä, EI introssa/outrossa
 
-**V5b Overlay-elementit (16:9, 1920×1080):**
-1. **Ylälaatikko** (navy #1B3A5C): Status-badge vasemmalla (SemiBold 24px) + Hinta oikealla (Bold 44px), gap 40px
-2. **Alalaatikko** (kulta #C8A96E): Meta-teksti ylhäällä (Medium 24px) + URL alhaalla (SemiBold 22px, opacity 92%)
+**Overlay-elementit (16:9, 1920×1080):**
+1. **Info-bar** (vasen ylä, navy #1B3A5C): Kaikki yhdellä rivillä:
+   `Vapaa · 695 €/kk · 27 m² · 1h+k · Niittykumpu, Espoo`
+   - Status kultana (#C8A96E, SemiBold 24px)
+   - Hinta boldilla (Bold 30px)
+   - Muu teksti (Medium 24px)
+   - Erotin " · " 35% opacity
+2. **URL-box** (oikea ala, kulta #C8A96E): "eleaasunnot.fi" (SemiBold 22px, bottom 80px safe zone)
 
 **Skripti:** `scripts/generate-overlay.py <overlay-data.json> <output.png>`
 - Pillow RGBA 1920×1080 PNG, ImageFilter blur-varjot
