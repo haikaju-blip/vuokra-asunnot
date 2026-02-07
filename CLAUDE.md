@@ -603,6 +603,18 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 
 ## Muutosloki
 
+### 2026-02-07: Yhtenäinen kuvaputki — dropzone → galleria + video
+
+Ei-Matterport-kohteet (esim. isokatu-60-b52) voivat nyt myös saada videokierroksen. Kuvien käsittely kopioi originaalit automaattisesti `matterport-archive/{kohde}/images/`-kansioon, josta video-admin löytää ne.
+
+**Muutokset:**
+- `app/api/images/process/route.ts` — uusi `kohde`-parametri, kopioi originaalit arkistoon
+- `app/admin/images/[id]/page.tsx` — välittää `property.id` (kohde) process-kutsussa
+- `lib/properties.ts` — `videoUrl` dynaaminen (`existsSync` tarkistus, poistaa hardcoded `MATTERPORT_VIDEO_MAP`)
+- `app/admin/video/[kohde]/page.tsx` — tyhjä-tila ohje linkillä Kuvien hallintaan
+
+**Prosessi:** DROPZONE → `/admin/images/{db_id}` "Käsittele" → WebP-galleria + originaalit arkistoon → `/admin/video/{kohde}` → video
+
 ### 2026-02-07: Fix — overlay-data.json ei kirjoittunut (mkdirSync)
 
 Generate-reitti yritti kirjoittaa `overlay-data.json` tiedostoa `video/`-kansioon ennen kuin kansio oli olemassa. Shell-skripti luo kansion (`mkdir -p`), mutta se käynnistyy vasta kirjoituksen jälkeen. `writeFileSync` epäonnistui hiljaisesti try/catch-lohkon sisällä.

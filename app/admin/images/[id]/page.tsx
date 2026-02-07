@@ -261,7 +261,8 @@ export default function ImageSelectorPage() {
         body: JSON.stringify({
           propertyId,
           images: Array.from(selectedImages),
-          copyToProperties: Array.from(selectedRelated)
+          copyToProperties: Array.from(selectedRelated),
+          kohde: property?.id,
         })
       })
 

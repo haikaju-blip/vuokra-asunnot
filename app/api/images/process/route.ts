@@ -21,6 +21,7 @@ interface ProcessRequest {
   propertyId: string
   images: string[]
   copyToProperties?: string[]
+  kohde?: string  // property.id — kopioi originaalit arkistoon videota varten
 }
 
 // Image sizes for responsive delivery
@@ -125,6 +126,22 @@ export async function POST(request: Request) {
           // Raakakuvia EI poisteta - säilytetään varmuuskopiona
         } catch (err) {
           console.error(`Error processing ${imageName}:`, err)
+        }
+      }
+    }
+
+    // Copy full-res originals to matterport-archive for video generation
+    if (body.kohde && /^[a-z0-9-]+$/.test(body.kohde)) {
+      const archiveImagesDir = join(
+        "/opt/vuokra-platform/data/matterport-archive",
+        body.kohde, "images"
+      )
+      await mkdir(archiveImagesDir, { recursive: true })
+      for (let i = 0; i < images.length; i++) {
+        const inputPath = join(rawDir, images[i])
+        if (existsSync(inputPath)) {
+          await copyFile(inputPath, join(archiveImagesDir,
+            `${String(i + 1).padStart(2, '0')}_${images[i]}`))
         }
       }
     }

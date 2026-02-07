@@ -280,6 +280,11 @@ export default function AdminVideoPage({
             /data/matterport-archive/{kohde}/images/
           </code>
         </p>
+        <p className="text-elea-text-muted text-sm mt-2">
+          Käsittele kuvat ensin{" "}
+          <a href="/admin/images" className="text-elea-navy underline">Kuvien hallinta</a>
+          {" "}-sivulla, niin ne kopioidaan automaattisesti tänne.
+        </p>
       </div>
     )
   }

@@ -72,16 +72,7 @@ export interface RawProperty {
 
 export const MATTERPORT_BASE = "https://my.matterport.com/show"
 
-// Matterport ID → video file mapping (Ken Burns videos from extracted images)
-const MATTERPORT_VIDEO_MAP: Record<string, string> = {
-  "yT6twx42vuJ": "/api/video/kilterinrinne-3-a",
-  "QgLMeLZmCfv": "/api/video/kilterinrinne-3-b",
-  "QbpBYmj8zw4": "/api/video/tyonjohtajankatu-5-as6",
-  "EuJFUDWy9UX": "/api/video/tyonjohtajankatu-5-as7",
-  "Mf7ndzm5V1v": "/api/video/tyonjohtajankatu-5-as16",
-  "SQMmpYKKQ7L": "/api/video/niittyportti-2-a21",
-  "H2LtzgaK7Ve": "/api/video/laajaniitynkuja-7-d",
-}
+const VIDEOS_DIR = join(process.cwd(), "public", "videos")
 
 export function matterportEmbedUrl(modelId: string): string {
   return `${MATTERPORT_BASE}/?m=${modelId}`
@@ -137,7 +128,9 @@ function formatAvailableDate(isoDate: string | null | undefined): string | undef
 
 function transformRawProperty(raw: RawProperty): Property {
   const matterportUrl = raw.matterport ? `${MATTERPORT_BASE}/?m=${raw.matterport}` : undefined
-  const videoUrl = raw.matterport ? MATTERPORT_VIDEO_MAP[raw.matterport] : undefined
+  const mediaKohde = raw.media_source || raw.id
+  const videoUrl = existsSync(join(VIDEOS_DIR, `${mediaKohde}-tour-web.mp4`))
+    ? `/api/video/${mediaKohde}` : undefined
   const status = raw.status === "available" ? "available" : "upcoming"
   const availableDate = formatAvailableDate(raw.available_date)
   const addressParts = raw.address.split(/\s+\d{5}\s+/)
