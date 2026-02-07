@@ -59,38 +59,45 @@ export async function POST(
       return NextResponse.json({ error: "Generointiskriptiä ei löydy" }, { status: 500 })
     }
 
-    // Tallenna kohteen tiedot properties.json:iin ennen overlayn generointia
+    // Tallenna kohteen tiedot properties.json:iin
     if (incomingPropertyData && typeof incomingPropertyData === "object") {
-      const { updatePropertyData } = await import("../route")
-      updatePropertyData(kohde, incomingPropertyData)
-    }
-
-    // Write or remove overlay-data.json
-    const videoDir = join(ARCHIVE_BASE, kohde, "video")
-    const overlayDataPath = join(videoDir, "overlay-data.json")
-    if (overlay) {
       try {
-        // Lue tuoreet tiedot properties.json:sta (juuri päivitetty yllä)
         const propsRaw = readFileSync(PROPERTIES_PATH, "utf-8")
         const props = JSON.parse(propsRaw) as Array<Record<string, unknown>>
-        // _propertyId täsmällinen, media_source ensin, id fallback
-        const targetId = incomingPropertyData?._propertyId as string | undefined
-        const match = (targetId ? props.find((p) => p.id === targetId) : null)
-          || props.find((p) => p.media_source === kohde)
-          || props.find((p) => p.id === kohde)
-        if (match) {
-          const overlayData = {
-            rent: match.rent,
-            area_m2: match.area_m2,
-            rooms: match.rooms,
-            room_layout: match.room_layout,
-            status: match.status,
-            available_date: match.available_date,
-            city: match.city,
-            neighborhood: match.neighborhood,
+        const targetId = incomingPropertyData._propertyId as string | undefined
+        let index = targetId ? props.findIndex((p) => p.id === targetId) : -1
+        if (index === -1) index = props.findIndex((p) => p.media_source === kohde)
+        if (index === -1) index = props.findIndex((p) => p.id === kohde)
+        if (index !== -1) {
+          const allowed = ["rent", "area_m2", "rooms", "room_layout", "status", "available_date", "neighborhood", "city"]
+          for (const field of allowed) {
+            if (field in incomingPropertyData) {
+              props[index][field] = incomingPropertyData[field]
+            }
           }
-          writeFileSync(overlayDataPath, JSON.stringify(overlayData, null, 2), "utf-8")
+          writeFileSync(PROPERTIES_PATH, JSON.stringify(props, null, 2), "utf-8")
         }
+      } catch (e) {
+        console.error("Property update error:", e)
+      }
+    }
+
+    // Write or remove overlay-data.json — SUORAAN clientin datasta
+    const videoDir = join(ARCHIVE_BASE, kohde, "video")
+    const overlayDataPath = join(videoDir, "overlay-data.json")
+    if (overlay && incomingPropertyData) {
+      try {
+        const overlayData = {
+          rent: incomingPropertyData.rent,
+          area_m2: incomingPropertyData.area_m2,
+          rooms: incomingPropertyData.rooms,
+          room_layout: incomingPropertyData.room_layout,
+          status: incomingPropertyData.status,
+          available_date: incomingPropertyData.available_date,
+          city: incomingPropertyData.city,
+          neighborhood: incomingPropertyData.neighborhood,
+        }
+        writeFileSync(overlayDataPath, JSON.stringify(overlayData, null, 2), "utf-8")
       } catch (e) {
         console.error("Overlay data write error:", e)
       }
