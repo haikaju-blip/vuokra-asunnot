@@ -145,28 +145,24 @@ export default function AdminVideoPage({
     if (!kohde) return
     setSaving(true)
     try {
-      // Tallenna video-asetukset
+      // Tallenna video-asetukset + kohteen tiedot yhdellä kutsulla
       await fetch(`/api/admin/video/${kohde}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedImages: selected, overlay }),
-      })
-
-      // Tallenna kohteen tiedot jos overlay on päällä ja propertyData olemassa
-      if (propertyData?.id) {
-        await fetch(`/api/admin/properties/${propertyData.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        body: JSON.stringify({
+          selectedImages: selected,
+          overlay,
+          propertyData: propertyData ? {
             rent: propertyData.rent,
             area_m2: propertyData.area_m2,
+            rooms: propertyData.rooms,
             room_layout: propertyData.room_layout,
             status: propertyData.status,
             available_date: propertyData.available_date,
             neighborhood: propertyData.neighborhood,
-          }),
-        })
-      }
+          } : undefined,
+        }),
+      })
 
       setDirty(false)
     } catch (e) {
@@ -182,11 +178,21 @@ export default function AdminVideoPage({
     setGenStatus("running")
     setGenOutput("Käynnistetään...")
 
-    // Save selection first
+    // Save selection + property data first
+    const propPayload = propertyData ? {
+      rent: propertyData.rent,
+      area_m2: propertyData.area_m2,
+      rooms: propertyData.rooms,
+      room_layout: propertyData.room_layout,
+      status: propertyData.status,
+      available_date: propertyData.available_date,
+      neighborhood: propertyData.neighborhood,
+    } : undefined
+
     await fetch(`/api/admin/video/${kohde}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ selectedImages: selected, overlay }),
+      body: JSON.stringify({ selectedImages: selected, overlay, propertyData: propPayload }),
     })
     setDirty(false)
 
@@ -194,7 +200,7 @@ export default function AdminVideoPage({
       const res = await fetch(`/api/admin/video/${kohde}/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ images: selected, overlay }),
+        body: JSON.stringify({ images: selected, overlay, propertyData: propPayload }),
       })
       const data = await res.json()
 

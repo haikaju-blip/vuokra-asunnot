@@ -1,10 +1,35 @@
 import { NextResponse } from "next/server"
 import { readdir, stat, readFile } from "fs/promises"
 import { join } from "path"
-import { existsSync, readFileSync } from "fs"
+import { existsSync, readFileSync, writeFileSync } from "fs"
 
 const ARCHIVE_BASE = "/opt/vuokra-platform/data/matterport-archive"
 const PROPERTIES_PATH = "/opt/vuokra-platform/data/properties.json"
+
+/** Päivitä kohteen tiedot properties.json:iin */
+function updatePropertyData(kohde: string, updates: Record<string, unknown>): boolean {
+  try {
+    const raw = readFileSync(PROPERTIES_PATH, "utf-8")
+    const props = JSON.parse(raw) as Array<Record<string, unknown>>
+    const index = props.findIndex(
+      (p) => p.media_source === kohde || p.id === kohde
+    )
+    if (index === -1) return false
+
+    const allowed = ["rent", "area_m2", "rooms", "room_layout", "status", "available_date", "neighborhood"]
+    for (const field of allowed) {
+      if (field in updates) {
+        props[index][field] = updates[field]
+      }
+    }
+    writeFileSync(PROPERTIES_PATH, JSON.stringify(props, null, 2), "utf-8")
+    return true
+  } catch {
+    return false
+  }
+}
+
+export { updatePropertyData }
 
 interface ImageInfo {
   filename: string
@@ -115,10 +140,19 @@ export async function PUT(
     }
 
     const body = await request.json()
-    const { selectedImages, overlay } = body as { selectedImages: string[]; overlay?: boolean }
+    const { selectedImages, overlay, propertyData } = body as {
+      selectedImages: string[]
+      overlay?: boolean
+      propertyData?: Record<string, unknown>
+    }
 
     if (!Array.isArray(selectedImages)) {
       return NextResponse.json({ error: "selectedImages puuttuu" }, { status: 400 })
+    }
+
+    // Tallenna kohteen tiedot properties.json:iin
+    if (propertyData && typeof propertyData === "object") {
+      updatePropertyData(kohde, propertyData)
     }
 
     const { writeFile } = await import("fs/promises")

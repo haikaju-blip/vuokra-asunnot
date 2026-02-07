@@ -609,7 +609,8 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 
 - Checkbox admin video-sivulla: "Lisää tiedot videon päälle"
 - Overlay-kentät muokattavissa suoraan video-sivulla (vuokra, m², kokoonpano, status, alue, kaupunki)
-- Muutokset tallentuvat myös kohteen hallintasivulle (PUT /api/admin/properties/[id])
+- Muutokset tallentuvat properties.json:iin suoraan video-API:n kautta (`updatePropertyData` helper)
+- Molemmat reitit (PUT config + POST generate) päivittävät properties.json:n — ei erillistä /api/admin/properties -kutsua
 - Esikatselu navy-pohjalla päivittyy reaaliajassa
 - Overlay näkyy vain content-klipeissä, EI introssa/outrossa
 - Noudattaa ELEA-video-overlay-ohje -spesifikaatiota (16:9 koot)

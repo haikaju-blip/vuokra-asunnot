@@ -22,7 +22,11 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { images, overlay } = body as { images: string[]; overlay?: boolean }
+    const { images, overlay, propertyData: incomingPropertyData } = body as {
+      images: string[]
+      overlay?: boolean
+      propertyData?: Record<string, unknown>
+    }
 
     if (!Array.isArray(images) || images.length < 2) {
       return NextResponse.json({ error: "Tarvitaan vähintään 2 kuvaa" }, { status: 400 })
@@ -55,11 +59,18 @@ export async function POST(
       return NextResponse.json({ error: "Generointiskriptiä ei löydy" }, { status: 500 })
     }
 
+    // Tallenna kohteen tiedot properties.json:iin ennen overlayn generointia
+    if (incomingPropertyData && typeof incomingPropertyData === "object") {
+      const { updatePropertyData } = await import("../route")
+      updatePropertyData(kohde, incomingPropertyData)
+    }
+
     // Write or remove overlay-data.json
     const videoDir = join(ARCHIVE_BASE, kohde, "video")
     const overlayDataPath = join(videoDir, "overlay-data.json")
     if (overlay) {
       try {
+        // Lue tuoreet tiedot properties.json:sta (juuri päivitetty yllä)
         const propsRaw = readFileSync(PROPERTIES_PATH, "utf-8")
         const props = JSON.parse(propsRaw) as Array<Record<string, unknown>>
         const match = props.find(
