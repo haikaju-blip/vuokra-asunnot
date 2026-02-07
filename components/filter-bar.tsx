@@ -7,16 +7,18 @@ const ALL_AREAS = ["Espoo", "Helsinki", "Kirkkonummi", "Klaukkala", "Oulu", "Van
 interface FilterBarProps {
   selectedArea: string
   onAreaChange: (area: string) => void
-  activeAreas: string[]  // Areas that have properties
+  activeAreas: string[]
+  onNotifyClick?: () => void
 }
 
 export function FilterBar({
   selectedArea,
   onAreaChange,
   activeAreas,
+  onNotifyClick,
 }: FilterBarProps) {
   const handleAreaClick = (area: string) => {
-    if (!activeAreas.includes(area)) return // Don't allow clicking inactive areas
+    if (!activeAreas.includes(area)) return
     if (selectedArea === area) {
       onAreaChange("all")
     } else {
@@ -26,7 +28,7 @@ export function FilterBar({
 
   return (
     <div className="bg-card rounded-[16px] border border-border/70 shadow-[0_1px_2px_rgba(16,24,40,0.06)] p-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
         <div className="grid grid-cols-3 sm:flex sm:items-center gap-2 sm:flex-wrap" role="group" aria-label="Valitse alue">
           {ALL_AREAS.map((area) => {
             const isActive = activeAreas.includes(area)
@@ -53,6 +55,23 @@ export function FilterBar({
             )
           })}
         </div>
+
+        {/* CTA-box — desktop/tablet */}
+        {onNotifyClick && (
+          <div className="hidden sm:flex items-center gap-5 bg-elea-warm-pale border border-elea-border rounded-[12px] px-5 py-4 flex-shrink-0">
+            <div className="flex-1 min-w-0">
+              <p className="text-[13px] text-elea-text-muted mb-1">Näytämme täällä vain vapaat ja pian vapautuvat.</p>
+              <p className="text-[15px] font-semibold text-elea-navy">Etkö löytänyt sopivaa?</p>
+              <p className="text-[13px] text-elea-text-muted">Jätä toive — ilmoitamme kun vapautuu.</p>
+            </div>
+            <button
+              onClick={onNotifyClick}
+              className="px-5 py-3 bg-elea-navy text-white text-[14px] font-semibold rounded-[10px] whitespace-nowrap transition-colors hover:bg-[#152d47]"
+            >
+              Ilmoita kiinnostuksesi →
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

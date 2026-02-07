@@ -24,6 +24,10 @@ export function PropertyListClient({ properties }: PropertyListClientProps) {
     setContactModal({ isOpen: true, property })
   }, [])
 
+  const openNotifyModal = useCallback(() => {
+    setContactModal({ isOpen: true, property: null })
+  }, [])
+
   const closeContactModal = useCallback(() => {
     setContactModal({ isOpen: false, property: null })
   }, [])
@@ -52,7 +56,22 @@ export function PropertyListClient({ properties }: PropertyListClientProps) {
         selectedArea={selectedArea}
         onAreaChange={handleAreaChange}
         activeAreas={activeAreas}
+        onNotifyClick={openNotifyModal}
       />
+
+      {/* CTA-banneri — mobiili */}
+      <div className="sm:hidden bg-elea-warm-pale border border-elea-border rounded-[12px] px-4 py-3.5">
+        <p className="text-[12px] text-elea-text-muted mb-2.5">Näytämme vain vapaat ja pian vapautuvat.</p>
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[14px] font-semibold text-elea-navy">Etkö löytänyt sopivaa?</span>
+          <button
+            onClick={openNotifyModal}
+            className="px-4 py-2.5 bg-elea-navy text-white text-[13px] font-semibold rounded-[8px] whitespace-nowrap transition-colors hover:bg-[#152d47]"
+          >
+            Jätä toive →
+          </button>
+        </div>
+      </div>
 
       <PropertyGrid
         properties={visibleProperties}

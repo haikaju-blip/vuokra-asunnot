@@ -41,8 +41,8 @@ export default function PropertiesPage() {
       {/* Header */}
       <header style={{ background: '#FFFFFF', borderBottom: '1px solid #E5DFD6' }}>
         <div className="max-w-[1200px] mx-auto px-6">
-          <div className="flex h-16 items-center justify-between">
-            {/* Logo — sisennetty linjaan filtteripainikkeen tekstin kanssa */}
+          {/* Desktop/tablet: yksirivinen */}
+          <div className="hidden sm:flex h-16 items-center justify-between">
             <a href="/" className="flex items-baseline" style={{ marginLeft: 31 }}>
               <span
                 className="font-serif"
@@ -51,13 +51,26 @@ export default function PropertiesPage() {
                 ELEA<span style={{ color: '#C8A96E' }}>.</span>
               </span>
             </a>
-            {/* Tilastorivi — piilossa mobiilissa */}
-            <div className="hidden sm:flex items-center gap-1.5" style={{ fontSize: 13, color: '#8A857E' }}>
+            <div className="flex items-center gap-1.5" style={{ fontSize: 13, color: '#8A857E', marginRight: 28 }}>
               <span>~100 asuntoa</span>
               <span className="w-px h-3.5 mx-1.5" style={{ background: '#E5DFD6' }} />
               <span>6 paikkakuntaa</span>
               <span className="w-px h-3.5 mx-1.5" style={{ background: '#E5DFD6' }} />
               <span>vuodesta 1988</span>
+            </div>
+          </div>
+          {/* Mobiili: 2-rivinen */}
+          <div className="sm:hidden py-3 px-2">
+            <a href="/" className="block">
+              <span
+                className="font-serif"
+                style={{ fontSize: 22, color: '#1B3A5C' }}
+              >
+                ELEA<span style={{ color: '#C8A96E' }}>.</span>
+              </span>
+            </a>
+            <div style={{ fontSize: 12, color: '#8A857E', marginTop: 4 }}>
+              ~100 asuntoa · 6 paikkakuntaa · 1988 lähtien
             </div>
           </div>
         </div>

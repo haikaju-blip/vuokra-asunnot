@@ -603,6 +603,23 @@ Seuraava vaihe: korvaa Matterport-iframe omalla videolla:
 
 ## Muutosloki
 
+### 2026-02-07: CTA-banneri "Etkö löytänyt sopivaa?"
+
+Noudattaa `ELEA-cta-banneri-ohje.md` -spesifikaatiota. Notify Me -banneri filtterien perässä.
+
+**Desktop/tablet (sm+):** CTA-box FilterBar-containerissa filtterien vieressä/alla. Beige tausta (#F5EFE3), 3 tekstiriviä + navy "Ilmoita kiinnostuksesi →" -nappi.
+
+**Mobiili (<sm):** Erillinen kompakti banneri FilterBar:n alla. "Näytämme vain vapaat..." + "Etkö löytänyt sopivaa?" + "Jätä toive →" -nappi.
+
+**Mobiili header:** 2-rivinen (logo + tilastot näkyviin). Desktop säilyy yksirivinen.
+
+**Nappi avaa ContactModalin** ilman kohdetta (yleinen kiinnostusilmoitus).
+
+**Tiedostot:**
+- `components/filter-bar.tsx` — CTA-box desktop/tablet, `onNotifyClick` callback
+- `components/property-list-client.tsx` — mobiili CTA-banneri, `openNotifyModal`
+- `app/page.tsx` — header 2-rivinen mobiilissa
+
 ### 2026-02-07: Overlay oikeaan yläkulmaan + videoSize-fix
 
 - `scripts/generate-overlay.py` — info-bar siirretty vasemmasta yläkulmasta oikeaan yläkulmaan, dynaaminen leveys sisällön mukaan
